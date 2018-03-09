@@ -42,7 +42,7 @@ public class Track {
 		
 	}
 	
-	public Track(String id, int position, String title, int length, Recording recording) {
+	public Track(String id, Integer position, String title, Integer length, Recording recording) {
 		this.id = id;
 		this.position = position;
 		this.title = title;

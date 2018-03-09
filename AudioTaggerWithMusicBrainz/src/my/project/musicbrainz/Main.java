@@ -3,7 +3,9 @@ package my.project.musicbrainz;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -19,10 +21,14 @@ import org.xml.sax.SAXException;
 import my.project.musicbrainz.model.Medium;
 import my.project.musicbrainz.model.Release;
 import my.project.musicbrainz.model.Track;
+import my.project.musicbrainz.model.Artist;
+import my.project.musicbrainz.model.Recording;
 
 public class Main {
 
 	public static void main(String[] args) {
+		Map<String, Artist> artists = new HashMap<>();
+		Map<String, Recording> recordings = new HashMap<>();
 		XMLProvider xmlProvider = new XMLProvider(".");
 		try {
 			File xml = xmlProvider.getRelease("e5db824a-6b2c-4200-9f17-ca4c6adf6ace").toFile();
@@ -57,7 +63,20 @@ public class Main {
 							track.setId(elementTrack.getAttribute("id"));
 							track.setTitle(elementTrack.getElementsByTagName("title").item(0).getTextContent());
 							track.setPosition(Integer.getInteger(elementTrack.getElementsByTagName("position").item(0).getTextContent(), j+1));
-							//%TODO length
+							track.setLength(Integer.getInteger(elementTrack.getElementsByTagName("length").item(0).getTextContent(), 0));
+							// recording
+							String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0)).getAttribute("id");
+							Recording recording = null;
+							if (recordings.containsKey(recordingId)) {
+								recording = recordings.get(recordingId);
+							}
+							else {
+								File xmlRecording = xmlProvider.getRecording(recordingId).toFile();
+								Document recordingDoc = db.parse(xmlRecording);
+								recording = new Recording();
+								recording.setId(recordingId);
+								recording.setTitle(title);
+							}
 							track.setLength(0);
 							trackList.add(track);
 						}
