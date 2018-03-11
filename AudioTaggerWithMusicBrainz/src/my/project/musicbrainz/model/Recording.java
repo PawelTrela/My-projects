@@ -6,7 +6,7 @@ public class Recording {
 	private String id;
 	private String title;
 	private List<RelationArtist> relationArtist;
-	private List<RelationWork> relationWork;
+	private RelationWork relationWork;
 	
 	public String getId() {
 		return id;
@@ -26,10 +26,10 @@ public class Recording {
 	public void setRelationArtist(List<RelationArtist> relationArtist) {
 		this.relationArtist = relationArtist;
 	}
-	public List<RelationWork> getRelationWork() {
+	public RelationWork getRelationWork() {
 		return relationWork;
 	}
-	public void setRelationWork(List<RelationWork> relationWork) {
+	public void setRelationWork(RelationWork relationWork) {
 		this.relationWork = relationWork;
 	}
 	
@@ -37,7 +37,7 @@ public class Recording {
 		
 	}
 	
-	public Recording(String id, String title, List<RelationArtist> relationArtist, List<RelationWork> relationWork) {
+	public Recording(String id, String title, List<RelationArtist> relationArtist, RelationWork relationWork) {
 		this.id = id;
 		this.title = title;
 		this.relationArtist = relationArtist;
@@ -46,7 +46,7 @@ public class Recording {
 	
 	@Override
 	public String toString() {
-		return "\nRecording [id=" + id + ", title=" + title + ", relationArtist=" + relationArtist + ", relationWork=" + relationWork
+		return "\nRecording [id=" + id + ", title=" + title + ",\n\nrelationArtist=" + relationArtist + ", relationWork=" + relationWork
 				+ "]";
 	}
 }

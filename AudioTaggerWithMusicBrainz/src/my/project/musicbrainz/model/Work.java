@@ -1,11 +1,11 @@
 package my.project.musicbrainz.model;
 
+import java.util.List;
+
 public class Work {
 	private String id;
 	private String title;
-	private Artist composer;
-	private String beginDate;
-	private String endDate;
+	private List<RelationArtist> relationArtist;
 
 	public String getId() {
 		return id;
@@ -19,39 +19,24 @@ public class Work {
 	public void setTitle(String title) {
 		this.title = title;
 	}
-	public Artist getComposer() {
-		return composer;
+	public List<RelationArtist> getRelationArtist() {
+		return relationArtist;
 	}
-	public void setComposer(Artist composer) {
-		this.composer = composer;
-	}
-	public String getBeginDate() {
-		return beginDate;
-	}
-	public void setBeginDate(String beginDate) {
-		this.beginDate = beginDate;
-	}
-	public String getEndDate() {
-		return endDate;
-	}
-	public void setEndDate(String endDate) {
-		this.endDate = endDate;
+	public void setRelationArtist(List<RelationArtist> relationArtist) {
+		this.relationArtist = relationArtist;
 	}
 	public Work() {
 		
 	}
 	
-	public Work(String id, String title, Artist composer, String beginDate, String endDate) {
+	public Work(String id, String title, List<RelationArtist> relationArtist) {
 		this.id = id;
 		this.title = title;
-		this.composer = composer;
-		this.beginDate = beginDate;
-		this.endDate = endDate;
+		this.relationArtist = relationArtist;
 	}
 
 	@Override
 	public String toString() {
-		return "\nWork [id=" + id + ", title=" + title + ", composer=" + composer + ", beginDate=" + beginDate + 
-				", endDate=" + endDate + "]";
+		return "\nWork [id=" + id + ", title=" + title + ", relationArtist=" + relationArtist + "]";
 	}
 }
