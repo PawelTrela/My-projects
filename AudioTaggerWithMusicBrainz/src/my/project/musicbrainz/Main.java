@@ -36,24 +36,24 @@ public class Main {
 	static DocumentBuilder db;
 	
 	public static void main(String[] args) {
-		xmlProvider = new XMLProvider(".");
+		xmlProvider = new XMLProvider("MusicBrainzCache");
 		try {
 			//e5db824a-6b2c-4200-9f17-ca4c6adf6ace
-			File xml = xmlProvider.getRelease("07da4b32-1a0d-4a9f-ae62-b997321fb946").toFile();
+			File xmlRelease = xmlProvider.getRelease("07da4b32-1a0d-4a9f-ae62-b997321fb946").toFile();
 			dbf = DocumentBuilderFactory.newInstance();
 			try {
 				db = dbf.newDocumentBuilder();
 				try {
 					Release release = new Release();
-					Document dom = db.parse(xml);
-					Element elementRelease = (Element) dom.getDocumentElement().getFirstChild();
+					Document documentRelease = db.parse(xmlRelease);
+					Element elementRelease = (Element) documentRelease.getDocumentElement().getFirstChild();
 					release.setId(elementRelease.getAttribute("id"));
 					Element elementTitle = (Element) elementRelease.getElementsByTagName("title").item(0);
 					release.setTitle(elementTitle.getTextContent());
-					System.out.println("Title: " + release.getTitle());
+					//System.out.println("Title: " + release.getTitle());
 					Element elementMediumList = (Element) elementRelease.getElementsByTagName("medium-list").item(0);
 					release.setMediumListCount(elementMediumList.getAttribute("count"));
-					System.out.println(release.getMediumListCount());
+					//System.out.println(release.getMediumListCount());
 					List<Medium> mediumList = new ArrayList<>();
 					NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
 					for(int i=0; i<nodeListMedium.getLength(); i++) {
@@ -90,7 +90,7 @@ public class Main {
 								for(int k=0; k<recordingRelationList.getLength(); k++) {
 									Element elementRelationList = (Element) recordingRelationList.item(k);
 									if (elementRelationList.getAttribute("target-type").equals("artist")) {
-										recording.setRelationArtist(createRecordingRelationArtist(elementRelationList));
+										recording.setRelationArtist(createRelationArtistList(elementRelationList));
 									}
 									else if (elementRelationList.getAttribute("target-type").equals("work")) {
 										recording.setRelationWork(createRecordingRelationWork(elementRelationList));
@@ -165,18 +165,22 @@ public class Main {
 			}
 			work = new Work();
 			work.setId(workId);
-			work.setTitle(title);
-			work.setBeginDate(beginDate);
-			work.setEndDate(endDate);
-			work.setComposer(composer);
-			
+			Element elementWork = (Element) workDoc.getDocumentElement().getFirstChild();
+			Element elementWorkTitle = (Element) elementWork.getElementsByTagName("title").item(0);
+			work.setTitle(elementWorkTitle.getTextContent());
+			NodeList workRelationList = elementWork.getElementsByTagName("relation-list");
+			for(int k=0; k<workRelationList.getLength(); k++) {
+				Element elementRelationList = (Element) workRelationList.item(k);
+				if (elementRelationList.getAttribute("target-type").equals("artist")) {
+					work.setRelationArtist(createRelationArtistList(elementRelationList));
+				}
+			}
 			works.put(workId, work);
 		}
-		
 		return work;
 	}
 
-	private static List<RelationArtist> createRecordingRelationArtist(Element elementRelationList) {
+	private static List<RelationArtist> createRelationArtistList(Element elementRelationList) {
 		List<RelationArtist> relationArtist = new ArrayList<>();
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
 		for(int i=0; i<relation.getLength(); i++) {
@@ -243,13 +247,5 @@ public class Main {
 		
 		return artist;
 	}
-//    private static void downloadUsingNIO(String urlStr, String file) throws IOException {
-//        URL url = new URL(urlStr);
-//        ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-//        FileOutputStream fos = new FileOutputStream(file);
-//        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-//        fos.close();
-//        rbc.close();
-//    }
 }
 
