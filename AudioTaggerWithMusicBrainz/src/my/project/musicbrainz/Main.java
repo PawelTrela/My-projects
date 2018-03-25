@@ -11,10 +11,10 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -35,11 +35,15 @@ public class Main {
 	static DocumentBuilderFactory dbf;
 	static DocumentBuilder db;
 	
+	public static final Logger logger = LogManager.getLogger(Main.class);
+	
 	public static void main(String[] args) {
 		xmlProvider = new XMLProvider("MusicBrainzCache");
 		try {
 			//e5db824a-6b2c-4200-9f17-ca4c6adf6ace
-			File xmlRelease = xmlProvider.getRelease("07da4b32-1a0d-4a9f-ae62-b997321fb946").toFile();
+			// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
+			// 07da4b32-1a0d-4a9f-ae62-b997321fb946
+			File xmlRelease = xmlProvider.getRelease("9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc").toFile();
 			dbf = DocumentBuilderFactory.newInstance();
 			try {
 				db = dbf.newDocumentBuilder();
@@ -50,17 +54,17 @@ public class Main {
 					release.setId(elementRelease.getAttribute("id"));
 					Element elementTitle = (Element) elementRelease.getElementsByTagName("title").item(0);
 					release.setTitle(elementTitle.getTextContent());
-					//System.out.println("Title: " + release.getTitle());
 					Element elementMediumList = (Element) elementRelease.getElementsByTagName("medium-list").item(0);
 					release.setMediumListCount(elementMediumList.getAttribute("count"));
-					//System.out.println(release.getMediumListCount());
 					List<Medium> mediumList = new ArrayList<>();
 					NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
 					for(int i=0; i<nodeListMedium.getLength(); i++) {
 						Element elementMedium = (Element) nodeListMedium.item(i);
 						Medium medium = new Medium();
-						medium.setPosition(elementMedium.getElementsByTagName("position").item(0).getTextContent());
-						medium.setFormat(elementMedium.getElementsByTagName("format").item(0).getTextContent());
+						medium.setParent(release);
+						medium.setPosition(getTextContent(elementMedium, "position"));
+						medium.setTitle(getTextContent(elementMedium, "title"));
+						medium.setFormat(getTextContent(elementMedium, "format"));
 						List<Track> trackList = new ArrayList<>();
 						Element elementTrackList = (Element) elementMedium.getElementsByTagName("track-list").item(0);
 						medium.setTrackListCount(elementTrackList.getAttribute("count"));
@@ -68,10 +72,11 @@ public class Main {
 						for(int j=0; j<nodeListTrack.getLength(); j++) {
 							Element elementTrack = (Element) nodeListTrack.item(j);
 							Track track = new Track();
+							track.setParent(medium);
 							track.setId(elementTrack.getAttribute("id"));
-							track.setTitle(elementTrack.getElementsByTagName("title").item(0).getTextContent());
-							track.setPosition(Integer.getInteger(elementTrack.getElementsByTagName("position").item(0).getTextContent(), j+1));
-							track.setLength(Integer.getInteger(elementTrack.getElementsByTagName("length").item(0).getTextContent(), 0));
+							track.setTitle(getTextContent(elementTrack, "title"));
+							track.setPosition(Integer.parseInt(getTextContent(elementTrack, "position")));
+							track.setLength(Integer.parseInt(getTextContent(elementTrack, "length")));
 							// recording
 							String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0)).getAttribute("id");
 							Recording recording = null;
@@ -96,7 +101,7 @@ public class Main {
 										recording.setRelationWork(createRecordingRelationWork(elementRelationList));
 									}
 								}
-								System.out.println(recording.getRelationArtist());
+//								logger.debug(recording.getRelationArtist());
 								// TODO walk through relation-list with target-type="artist" and load RelationArtist list
 								// (but only with artist of type instrument, harpsichord, strings, performer, vocal,
 								// performing orchestra, conductor
@@ -107,14 +112,15 @@ public class Main {
 							}
 							recordings.put(recordingId, recording);
 							track.setRecording(recording);
-							track.setLength(0);
 							trackList.add(track);
+							logger.debug(Mp3tagsValuesProvider.getTrackLength(track) + ", Release " + release.getTitle() + ", " + medium.getFormat() + medium.getPosition() +
+									medium.getTitle() + ", track " + track.getPosition() + "/" + medium.getTrackListCount() + ": " + track.getTitle());
 						}
 						medium.setTrackList(trackList);
 						mediumList.add(medium);
 					}
 					release.setMediumList(mediumList);
-					System.out.println(release.toString());
+//					logger.debug(release.toString());
 				} catch (SAXException e) {
 					e.printStackTrace();
 				}
@@ -132,10 +138,13 @@ public class Main {
 			Element elementRelation = (Element) relation.item(i);
 			if (elementRelation.getAttribute("type").equals("performance")) {
 				RelationWork relationWork = new RelationWork();
-				Work work = getWork(elementRelation.getElementsByTagName("target").item(0).getTextContent());
-				relationWork.setDate(elementRelation.getElementsByTagName("begin").item(0).getTextContent());
-				relationWork.setType("performance");
-				relationWork.setWork(work);
+				String workId = getTextContent(elementRelation, "target");
+				if (workId.length() > 0) {
+					Work work = getWork(getTextContent(elementRelation, "target"));
+					relationWork.setDate(getTextContent(elementRelation, "begin"));
+					relationWork.setType("performance");
+					relationWork.setWork(work);
+				}
 				return relationWork;
 			}
 		}
@@ -188,9 +197,9 @@ public class Main {
 			RelationArtist relationArtistMember = new RelationArtist();
 			relationArtistMember.setType(elementRelation.getAttribute("type"));
 			// begin, end, target
-			String artistId = elementRelation.getElementsByTagName("target").item(0).getTextContent();
-			String beginDate = elementRelation.getElementsByTagName("begin").item(0).getTextContent();
-			String endDate = elementRelation.getElementsByTagName("end").item(0).getTextContent();
+			String artistId = getTextContent(elementRelation, "target");
+			String beginDate = getTextContent(elementRelation, "begin");
+			String endDate = getTextContent(elementRelation, "end");;
 			Artist artist = getArtist(artistId);
 			relationArtistMember.setBeginDate(beginDate);
 			relationArtistMember.setEndDate(endDate);
@@ -201,7 +210,6 @@ public class Main {
 	}
 	
 	private static Artist getArtist(String artistId) {
-		//System.out.println(artistId);
 		Artist artist = null;
 		
 		if (artists.containsKey(artistId)) {
@@ -227,25 +235,32 @@ public class Main {
 			
 			Element elementArtist = (Element) artistDoc.getDocumentElement().getFirstChild();
 			artist.setType(elementArtist.getAttribute("type"));
-			artist.setName(elementArtist.getElementsByTagName("name").item(0).getTextContent());
-			artist.setSortName(elementArtist.getElementsByTagName("sort-name").item(0).getTextContent());
-			artist.setCountry(elementArtist.getElementsByTagName("country").item(0).getTextContent());
-			artist.setArea(((Element) elementArtist.getElementsByTagName("area").item(0)).getElementsByTagName("name").item(0).getTextContent());
-			NodeList lifeSpan = elementArtist.getElementsByTagName("life-span");
-			if (lifeSpan.getLength() > 0) {
-				NodeList lifeSpanBegin = ((Element) lifeSpan.item(0)).getElementsByTagName("begin");
-				if (lifeSpanBegin.getLength() > 0) {
-					artist.setLifeSpanBegin(((Element) lifeSpan.item(0)).getElementsByTagName("begin").item(0).getTextContent());
-				}
-				NodeList lifeSpanEnd = ((Element) lifeSpan.item(0)).getElementsByTagName("end");
-				if (lifeSpanEnd.getLength() > 0) {
-					artist.setLifeSpanEnd(((Element) lifeSpan.item(0)).getElementsByTagName("end").item(0).getTextContent());
-				}
-			}
+			artist.setName(getTextContent(elementArtist, "name"));
+			artist.setSortName(getTextContent(elementArtist, "sort-name"));
+			artist.setCountry(getTextContent(elementArtist, "country"));
+			artist.setArea(getTextContent(elementArtist, "area.name"));
+			artist.setLifeSpanBegin(getTextContent(elementArtist, "life-span.begin"));
+			artist.setLifeSpanBegin(getTextContent(elementArtist, "life-span.end"));
 			artists.put(artistId, artist);
 		}
 		
 		return artist;
+	}
+	
+	private static String getTextContent(Element element, String name) {
+		String returnValue = "";
+		String names[] = name.split("\\.");
+		for (int i = 0; i < names.length; i++) {
+			NodeList nl = element.getElementsByTagName(names[i]);
+			if (nl.getLength() > 0) {
+				element = (Element) nl.item(0);
+				returnValue = element.getTextContent();
+			}
+			else {
+				return "";
+			}
+		}
+		return returnValue;
 	}
 }
 

@@ -6,6 +6,7 @@ public class Track {
 	private String title;
 	private Integer length;
 	private Recording recording;
+	private Medium parent;
 	
 	public String getId() {
 		return id;
@@ -38,6 +39,12 @@ public class Track {
 		this.recording = recording;
 	}
 	
+	public Medium getParent() {
+		return parent;
+	}
+	public void setParent(Medium parent) {
+		this.parent = parent;
+	}
 	public Track() {
 		
 	}
