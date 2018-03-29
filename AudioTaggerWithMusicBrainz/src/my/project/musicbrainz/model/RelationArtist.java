@@ -2,6 +2,7 @@ package my.project.musicbrainz.model;
 
 public class RelationArtist {
 	private String type;
+	private String attribute;
 	private String beginDate;
 	private String endDate;
 	private Artist artist;
@@ -11,6 +12,12 @@ public class RelationArtist {
 	}
 	public void setType(String type) {
 		this.type = type;
+	}
+	public String getAttribute() {
+		return attribute;
+	}
+	public void setAttribute(String attribute) {
+		this.attribute = attribute;
 	}
 	public String getBeginDate() {
 		return beginDate;
@@ -34,8 +41,9 @@ public class RelationArtist {
 		
 	}
 	
-	public RelationArtist(String type, String beginDate, String endDate, Artist artist) {
+	public RelationArtist(String type, String attribute, String beginDate, String endDate, Artist artist) {
 		this.type = type;
+		this.attribute = attribute;
 		this.beginDate = beginDate;
 		this.endDate = endDate;
 		this.artist = artist;
@@ -43,7 +51,7 @@ public class RelationArtist {
 	
 	@Override
 	public String toString() {
-		return "\nRelationArtist [type=" + type + ", beginDate=" + beginDate + 
+		return "\nRelationArtist [type=" + type + ", attribute=" + attribute + ", beginDate=" + beginDate + 
 				", endDate=" + endDate + ", artist=" + artist + "]";
 	}
 }

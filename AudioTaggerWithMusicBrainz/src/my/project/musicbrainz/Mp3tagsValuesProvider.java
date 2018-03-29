@@ -1,7 +1,11 @@
 package my.project.musicbrainz;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import my.project.musicbrainz.model.Artist;
 import my.project.musicbrainz.model.Medium;
 import my.project.musicbrainz.model.RelationArtist;
 import my.project.musicbrainz.model.Release;
@@ -11,41 +15,42 @@ public class Mp3tagsValuesProvider {
 	public static String getDiscNumber(Track track) {
 		return track.getParent().getPosition();
 	}
-	
+
 	public static String getDiscTotal(Track track) {
 		return track.getParent().getParent().getMediumListCount();
 	}
-	
+
 	public static String getAlbumName(Track track) {
 		Medium medium = track.getParent();
 		Release release = medium.getParent();
 		String albumTitle = medium.getTitle();
 		String releaseTitle = release.getTitle();
 		Integer albumCount = Integer.getInteger(release.getMediumListCount(), 1);
-		String valueToReturn = releaseTitle;
-		
+		StringBuilder valueToReturn = new StringBuilder();
+		valueToReturn.append(releaseTitle);
+
 		if (albumCount > 1) {
-			valueToReturn = valueToReturn + ", " + medium.getFormat() + medium.getPosition();
+			valueToReturn.append(", " + medium.getFormat() + medium.getPosition());
 			if (!albumTitle.isEmpty()) {
-				valueToReturn = valueToReturn + ". " + albumTitle;
+				valueToReturn.append(". " + albumTitle);
 			}
 		}
 		else {
 			if (!albumTitle.isEmpty()) {
-				valueToReturn = valueToReturn + ", " + albumTitle;
+				valueToReturn.append(", " + albumTitle);
 			}
 		}
-		return valueToReturn;
+		return valueToReturn.toString();
 	}
-	
+
 	public static String getTrackNumber(Track track) {
 		return track.getPosition().toString();
 	}
-	
+
 	public static String getTrackTotal(Track track) {
 		return track.getParent().getTrackListCount();
 	}
-	
+
 	public static String getTrackTitle(Track track) {
 		String title = track.getRecording().getTitle();
 		if (title.isEmpty()) {
@@ -53,13 +58,13 @@ public class Mp3tagsValuesProvider {
 		}
 		return title;
 	}
-	
+
 	public static String getTrackLength(Track track) {
 		Integer millis = track.getLength();
 		Long hours = TimeUnit.MILLISECONDS.toHours(millis);
 		Long minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % TimeUnit.HOURS.toMinutes(1);
 		Long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % TimeUnit.MINUTES.toSeconds(1);
-		
+
 		String secondsAsString = seconds.toString();
 		if (seconds < 10) {
 			secondsAsString = "0" + secondsAsString;
@@ -72,35 +77,137 @@ public class Mp3tagsValuesProvider {
 		if (hours > 0) {
 			valueToReturn = hours.toString() + ":" + valueToReturn;
 		}
-		
+
+		return valueToReturn;
+	}
+
+	public static String getComposer(Track track, boolean includeDetails) {
+		String valueToReturn = "";
+		List<RelationArtist> relations = track.getRecording().getRelationWork().getWork().getRelationArtist();
+		for (int i = 0; i < relations.size(); i++) {
+			RelationArtist relation = relations.get(i);
+			if (relation.getType().equals("composer")) {
+				Artist artist = relation.getArtist();
+				valueToReturn += textSeparator(valueToReturn);
+				valueToReturn += artist.getName();
+				if (includeDetails) {
+					String details = "";
+					if (!artist.getLifeSpanBegin().isEmpty()) {
+						details = artist.getLifeSpanBegin() + " - " + artist.getLifeSpanEnd();
+					}
+					if (!artist.getCountry().isEmpty()) {
+						details += textSeparator(details);
+						details += artist.getArea();
+					}
+					if (!details.isEmpty()) {
+						details = " (" + details + ")";
+					}
+					valueToReturn += details;
+				}
+			}
+		}
+		return valueToReturn;
+	}
+
+	public static String getArtist(Track track) {
+		Map<String,String> artists = new LinkedHashMap<>();
+		artists.put("instrument", null);
+		artists.put("harpsichord", null);
+		artists.put("strings", null);
+		artists.put("performer", null);
+		artists.put("vocal", null);
+		artists.put("performing orchestra", null);
+		artists.put("conductor", null);
+		List<RelationArtist> relations = track.getRecording().getRelationArtist();
+		for (int i = 0; i<relations.size(); i++) {
+			RelationArtist relation = relations.get(i);
+			String relationType = relation.getType();
+			if (artists.containsKey(relationType)) {
+				String artistName = relation.getArtist().getName();
+				if (relationType.equals("instrument")) {
+					String instrument = relation.getAttribute();
+					if (!instrument.isEmpty()) {
+						artistName += " (" + instrument + ")";
+					}
+				}
+				else if (!relationType.equals("performing orchestra")) {
+					artistName += " (" + relationType + ")";	
+				}
+				artists.put(relationType, artistName);
+			}
+		}
+		String valueToReturn = "";
+		for (Map.Entry<String,String> entry : artists.entrySet()) {
+			if (entry.getValue()!=null) {
+				valueToReturn += textSeparator(valueToReturn);
+				valueToReturn += entry.getValue();
+			}
+		}
+		return valueToReturn;
+	}
+
+	public static String getRecordingDate(Track track) {
+		String valueToReturn = "";
+		List<RelationArtist> relations = track.getRecording().getRelationArtist();
+		for (int i = 0; i < relations.size(); i++) {
+			RelationArtist relation = relations.get(i);
+			valueToReturn = relation.getBeginDate();
+			if (valueToReturn.isEmpty()) {
+				valueToReturn = relation.getBeginDate();
+			}
+			if (!valueToReturn.isEmpty()) {
+				break;
+			}
+		}
 		return valueToReturn;
 	}
 	
-	public static String getComposer(Track track) {
-		
+	public static String getComposingDate(Track track) {
+		String valueToReturn = "";
+		List<RelationArtist> relations = track.getRecording().getRelationWork().getWork().getRelationArtist();
+		for (int i = 0; i < relations.size(); i++) {
+			RelationArtist relation = relations.get(i);
+			if (relation.getType().equals("composer")) {
+				valueToReturn = relation.getBeginDate();
+			}
+		}
+		return valueToReturn;
 	}
-	
-	public static String getArtist(Track track) {
-		
-	}
-	
-	public static String getRecordingDate(Track track) {
-		/*
-		 * TODO Loop through all relationArtist elements and get end date from it
-		 */
-		List<RelationArtist> relationArtist = track.getRecording().getRelationArtist();
-		
-	}
-	
+
 	public static String getOrganization(Track track) {
 		return track.getParent().getParent().getLabel();
 	}
-	
+
 	public static String getComment(Track track) {
-		
+		String artists = getArtist(track);
+		String recordingDate = getRecordingDate(track);
+		String composer = getComposer(track, true);
+		String composingDate = getComposingDate(track);
+		StringBuilder valueToReturn = new StringBuilder();
+		if (!artists.isEmpty()) {
+			valueToReturn.append("recorded by " + artists);
+			if (!recordingDate.isEmpty()) {
+				valueToReturn.append(" in " + recordingDate);
+			}
+		}
+		if (!composer.isEmpty()) {
+			valueToReturn.append(textSeparator(valueToReturn.toString()));
+			valueToReturn.append("composed by " + composer);
+			if (!composingDate.isEmpty()) {
+				valueToReturn.append(" in " + composingDate);
+			}
+		}
+		return valueToReturn.toString();
 	}
-	
+
 	public static String getUrl(Track track) {
 		return "https://musicbrainz.org/track/" + track.getId();
+	}
+
+	private static String textSeparator(String pastText) {
+		if (!pastText.isEmpty()) {
+			return ", ";
+		}
+		return "";
 	}
 }
