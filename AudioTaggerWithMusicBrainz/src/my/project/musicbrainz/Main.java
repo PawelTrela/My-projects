@@ -3,9 +3,11 @@ package my.project.musicbrainz;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -52,6 +54,9 @@ public class Main {
 					Release release = new Release();
 					Document documentRelease = db.parse(xmlRelease);
 					Element elementRelease = (Element) documentRelease.getDocumentElement().getFirstChild();
+					long startTime = System.currentTimeMillis();
+					Integer noOfTracksInRelease = getNumberOfTracksInRelease(elementRelease);
+					Integer noOfProcessedTrack = 0;
 					release.setId(elementRelease.getAttribute("id"));
 					release.setTitle(getTextContent(elementRelease, "title"));
 					release.setLabel(getTextContent(elementRelease, "label-info-list.label-info.label.name"));
@@ -59,8 +64,9 @@ public class Main {
 					release.setMediumListCount(elementMediumList.getAttribute("count"));
 					List<Medium> mediumList = new ArrayList<>();
 					NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
-					for(int i=0; i<nodeListMedium.getLength(); i++) {
-						Element elementMedium = (Element) nodeListMedium.item(i);
+					int noOfMediums = nodeListMedium.getLength();
+					for(int currentMedium=0; currentMedium<noOfMediums; currentMedium++) {
+						Element elementMedium = (Element) nodeListMedium.item(currentMedium);
 						Medium medium = new Medium();
 						medium.setParent(release);
 						medium.setPosition(getTextContent(elementMedium, "position"));
@@ -70,8 +76,9 @@ public class Main {
 						Element elementTrackList = (Element) elementMedium.getElementsByTagName("track-list").item(0);
 						medium.setTrackListCount(elementTrackList.getAttribute("count"));
 						NodeList nodeListTrack = elementTrackList.getElementsByTagName("track");
-						for(int j=0; j<nodeListTrack.getLength(); j++) {
-							Element elementTrack = (Element) nodeListTrack.item(j);
+						int noOfTracksInMedium = nodeListTrack.getLength();
+						for(int currentTrack = 0; currentTrack < noOfTracksInMedium; currentTrack++) {
+							Element elementTrack = (Element) nodeListTrack.item(currentTrack);
 							Track track = new Track();
 							track.setParent(medium);
 							track.setId(elementTrack.getAttribute("id"));
@@ -105,12 +112,17 @@ public class Main {
 							recordings.put(recordingId, recording);
 							track.setRecording(recording);
 							trackList.add(track);
+							noOfProcessedTrack += 1;
+							printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, 
+									prepareProgressBarInfo(currentMedium+1, noOfMediums, currentTrack+1, noOfTracksInMedium));
+							/*
 							logger.debug("Disc " + Mp3tagsValuesProvider.getDiscNumber(track) + "/" + Mp3tagsValuesProvider.getDiscNumber(track) + "|" +
 							"Track " + Mp3tagsValuesProvider.getTrackNumber(track) + "/" + Mp3tagsValuesProvider.getTrackTotal(track) + "|" +
 									Mp3tagsValuesProvider.getAlbumName(track) + "|" + Mp3tagsValuesProvider.getTrackTitle(track) + ": " + Mp3tagsValuesProvider.getTrackLength(track) + "|" +
 							Mp3tagsValuesProvider.getUrl(track) + "|" + Mp3tagsValuesProvider.getArtist(track) + "|" +
 									Mp3tagsValuesProvider.getOrganization(track) + "|" + Mp3tagsValuesProvider.getComposer(track, false) + "|" +
 							Mp3tagsValuesProvider.getComment(track));
+							*/
 						}
 						medium.setTrackList(trackList);
 						mediumList.add(medium);
@@ -268,6 +280,57 @@ public class Main {
 			}
 		}
 		return "";
+	}
+	
+	private static Integer getNumberOfTracksInRelease(Element element) {
+		Integer noOfTracks = 0;
+		NodeList trackList = element.getElementsByTagName("track-list");
+		for (int i = 0; i < trackList.getLength(); i++) {
+			Element trackListElement = (Element) trackList.item(i);
+			noOfTracks += Integer.parseInt(trackListElement.getAttribute("count"));
+		}
+		return noOfTracks;
+	}
+	
+	private static void printProgress(long startTime, long total, long current, String info) {
+	    long eta = current == 0 ? 0 : 
+	        (total - current) * (System.currentTimeMillis() - startTime) / current;
+
+	    String etaHms = current == 0 ? "N/A" : 
+	            String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(eta),
+	                    TimeUnit.MILLISECONDS.toMinutes(eta) % TimeUnit.HOURS.toMinutes(1),
+	                    TimeUnit.MILLISECONDS.toSeconds(eta) % TimeUnit.MINUTES.toSeconds(1));
+
+	    StringBuilder string = new StringBuilder(115);   
+	    int percent = (int) (current * 100 / total);
+	    string
+	        .append('\r')
+	        .append(String.join("", Collections.nCopies(percent == 0 ? 2 : 2 - (int) (Math.log10(percent)), " ")))
+	        .append(String.format(" %d%% [", percent))
+	        .append(String.join("", Collections.nCopies(percent * 2 / 3, "=")))
+	        .append('>')
+	        .append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " ")))
+	        .append(']')
+	        .append(info)
+	        .append(String.format(", ETA: %s", etaHms));
+
+	    System.out.print(string);
+	}
+	
+	private static String prepareProgressBarInfo(int currentAlbum, int allAlbums, int currentTrack, int allTracks) {
+		String albums = "" + currentAlbum + "/" + allAlbums;
+		String tracks = "" + currentTrack + "/" + allTracks;
+		StringBuilder output = new StringBuilder(18);
+		output
+			.append(" ALB ")
+			.append(String.join("", Collections.nCopies(String.valueOf(allAlbums).length() * 2 + 1 - albums.length(), " ")))
+			.append(albums)
+			.append(", TRK ")
+			.append(String.join("", Collections.nCopies(5 - tracks.length(), " ")))
+			.append(tracks);
+		
+		
+		return output.toString();
 	}
 }
 
