@@ -36,13 +36,19 @@ public class Main {
 	static XMLProvider xmlProvider;
 	static DocumentBuilderFactory dbf;
 	static DocumentBuilder db;
-	
+
 	public static final Logger logger = LogManager.getLogger(Main.class);
-	
+
 	public static void main(String[] args) {
+		ParametersParser parametersParser = new ParametersParser(args);
+		if (!parametersParser.areParametersValid()) {
+			return;
+		}
+
 		xmlProvider = new XMLProvider("MusicBrainzCache");
 		try {
-			//e5db824a-6b2c-4200-9f17-ca4c6adf6ace
+
+			// e5db824a-6b2c-4200-9f17-ca4c6adf6ace
 			// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
 			// 07da4b32-1a0d-4a9f-ae62-b997321fb946
 			// b0837172-673c-4416-80d6-8a5801e6f102 - Andras Schiff - Mozart Piano Concertos
@@ -65,7 +71,7 @@ public class Main {
 					List<Medium> mediumList = new ArrayList<>();
 					NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
 					int noOfMediums = nodeListMedium.getLength();
-					for(int currentMedium=0; currentMedium<noOfMediums; currentMedium++) {
+					for (int currentMedium = 0; currentMedium < noOfMediums; currentMedium++) {
 						Element elementMedium = (Element) nodeListMedium.item(currentMedium);
 						Medium medium = new Medium();
 						medium.setParent(release);
@@ -77,7 +83,7 @@ public class Main {
 						medium.setTrackListCount(elementTrackList.getAttribute("count"));
 						NodeList nodeListTrack = elementTrackList.getElementsByTagName("track");
 						int noOfTracksInMedium = nodeListTrack.getLength();
-						for(int currentTrack = 0; currentTrack < noOfTracksInMedium; currentTrack++) {
+						for (int currentTrack = 0; currentTrack < noOfTracksInMedium; currentTrack++) {
 							Element elementTrack = (Element) nodeListTrack.item(currentTrack);
 							Track track = new Track();
 							track.setParent(medium);
@@ -86,12 +92,12 @@ public class Main {
 							track.setPosition(Integer.parseInt(getTextContent(elementTrack, "position")));
 							track.setLength(Integer.parseInt(getTextContent(elementTrack, "length")));
 							// recording
-							String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0)).getAttribute("id");
+							String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0))
+									.getAttribute("id");
 							Recording recording = null;
 							if (recordings.containsKey(recordingId)) {
 								recording = recordings.get(recordingId);
-							}
-							else {
+							} else {
 								File xmlRecording = xmlProvider.getRecording(recordingId).toFile();
 								Document recordingDoc = db.parse(xmlRecording);
 								recording = new Recording();
@@ -99,12 +105,11 @@ public class Main {
 								Element elementRecording = (Element) recordingDoc.getDocumentElement().getFirstChild();
 								recording.setTitle(getTextContent(elementRecording, "title"));
 								NodeList recordingRelationList = elementRecording.getElementsByTagName("relation-list");
-								for(int k=0; k<recordingRelationList.getLength(); k++) {
+								for (int k = 0; k < recordingRelationList.getLength(); k++) {
 									Element elementRelationList = (Element) recordingRelationList.item(k);
 									if (elementRelationList.getAttribute("target-type").equals("artist")) {
 										recording.setRelationArtist(createRelationArtistList(elementRelationList));
-									}
-									else if (elementRelationList.getAttribute("target-type").equals("work")) {
+									} else if (elementRelationList.getAttribute("target-type").equals("work")) {
 										recording.setRelationWork(createRecordingRelationWork(elementRelationList));
 									}
 								}
@@ -113,23 +118,29 @@ public class Main {
 							track.setRecording(recording);
 							trackList.add(track);
 							noOfProcessedTrack += 1;
-							printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, 
-									prepareProgressBarInfo(currentMedium+1, noOfMediums, currentTrack+1, noOfTracksInMedium));
+							printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, prepareProgressBarInfo(
+									currentMedium + 1, noOfMediums, currentTrack + 1, noOfTracksInMedium));
 							/*
-							logger.debug("Disc " + Mp3tagsValuesProvider.getDiscNumber(track) + "/" + Mp3tagsValuesProvider.getDiscNumber(track) + "|" +
-							"Track " + Mp3tagsValuesProvider.getTrackNumber(track) + "/" + Mp3tagsValuesProvider.getTrackTotal(track) + "|" +
-									Mp3tagsValuesProvider.getAlbumName(track) + "|" + Mp3tagsValuesProvider.getTrackTitle(track) + ": " + Mp3tagsValuesProvider.getTrackLength(track) + "|" +
-							Mp3tagsValuesProvider.getUrl(track) + "|" + Mp3tagsValuesProvider.getArtist(track) + "|" +
-									Mp3tagsValuesProvider.getOrganization(track) + "|" + Mp3tagsValuesProvider.getComposer(track, false) + "|" +
-							Mp3tagsValuesProvider.getComment(track));
-							*/
+							 * logger.debug("Disc " + Mp3tagsValuesProvider.getDiscNumber(track) + "/" +
+							 * Mp3tagsValuesProvider.getDiscNumber(track) + "|" + "Track " +
+							 * Mp3tagsValuesProvider.getTrackNumber(track) + "/" +
+							 * Mp3tagsValuesProvider.getTrackTotal(track) + "|" +
+							 * Mp3tagsValuesProvider.getAlbumName(track) + "|" +
+							 * Mp3tagsValuesProvider.getTrackTitle(track) + ": " +
+							 * Mp3tagsValuesProvider.getTrackLength(track) + "|" +
+							 * Mp3tagsValuesProvider.getUrl(track) + "|" +
+							 * Mp3tagsValuesProvider.getArtist(track) + "|" +
+							 * Mp3tagsValuesProvider.getOrganization(track) + "|" +
+							 * Mp3tagsValuesProvider.getComposer(track, false) + "|" +
+							 * Mp3tagsValuesProvider.getComment(track));
+							 */
 						}
 						medium.setTrackList(trackList);
 						mediumList.add(medium);
 					}
 					release.setMediumList(mediumList);
 					System.out.println("");
-//					logger.debug(release.toString());
+					// logger.debug(release.toString());
 				} catch (SAXException e) {
 					e.printStackTrace();
 				}
@@ -140,10 +151,10 @@ public class Main {
 			e.printStackTrace();
 		}
 	}
-    
+
 	private static RelationWork createRecordingRelationWork(Element elementRelationList) {
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
-		for(int i=0; i<relation.getLength(); i++) {
+		for (int i = 0; i < relation.getLength(); i++) {
 			Element elementRelation = (Element) relation.item(i);
 			if (elementRelation.getAttribute("type").equals("performance")) {
 				RelationWork relationWork = new RelationWork();
@@ -162,11 +173,10 @@ public class Main {
 
 	private static Work getWork(String workId) {
 		Work work = null;
-		
+
 		if (works.containsKey(workId)) {
 			work = works.get(workId);
-		}
-		else {
+		} else {
 			File xmlWork = null;
 			try {
 				xmlWork = xmlProvider.getWork(workId).toFile();
@@ -186,7 +196,7 @@ public class Main {
 			Element elementWork = (Element) workDoc.getDocumentElement().getFirstChild();
 			work.setTitle(getTextContent(elementWork, "title"));
 			NodeList workRelationList = elementWork.getElementsByTagName("relation-list");
-			for(int k=0; k<workRelationList.getLength(); k++) {
+			for (int k = 0; k < workRelationList.getLength(); k++) {
 				Element elementRelationList = (Element) workRelationList.item(k);
 				if (elementRelationList.getAttribute("target-type").equals("artist")) {
 					work.setRelationArtist(createRelationArtistList(elementRelationList));
@@ -200,7 +210,7 @@ public class Main {
 	private static List<RelationArtist> createRelationArtistList(Element elementRelationList) {
 		List<RelationArtist> relationArtist = new ArrayList<>();
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
-		for(int i=0; i<relation.getLength(); i++) {
+		for (int i = 0; i < relation.getLength(); i++) {
 			Element elementRelation = (Element) relation.item(i);
 			RelationArtist relationArtistMember = new RelationArtist();
 			relationArtistMember.setType(elementRelation.getAttribute("type"));
@@ -214,14 +224,13 @@ public class Main {
 		}
 		return relationArtist;
 	}
-	
+
 	private static Artist getArtist(String artistId) {
 		Artist artist = null;
-		
+
 		if (artists.containsKey(artistId)) {
 			artist = artists.get(artistId);
-		}
-		else {
+		} else {
 			File xmlArtist = null;
 			try {
 				xmlArtist = xmlProvider.getArtist(artistId).toFile();
@@ -238,7 +247,7 @@ public class Main {
 			}
 			artist = new Artist();
 			artist.setId(artistId);
-			
+
 			Element elementArtist = (Element) artistDoc.getDocumentElement().getFirstChild();
 			artist.setType(elementArtist.getAttribute("type"));
 			artist.setName(getTextContent(elementArtist, "name"));
@@ -249,20 +258,19 @@ public class Main {
 			artist.setLifeSpanEnd(getTextContent(elementArtist, "life-span.end"));
 			artists.put(artistId, artist);
 		}
-		
+
 		return artist;
 	}
-	
+
 	private static String getTextContent(Element element, String name) {
 		String elementName = "";
 		String remainPath = "";
 		int dotPosition = name.indexOf(".");
-		
+
 		if (dotPosition > 0) {
 			elementName = name.substring(0, dotPosition);
 			remainPath = name.substring(dotPosition + 1, name.length());
-		}
-		else {
+		} else {
 			elementName = name;
 		}
 		NodeList children = element.getChildNodes();
@@ -272,8 +280,7 @@ public class Main {
 				if (childElement.getTagName().equals(elementName)) {
 					if (remainPath.isEmpty()) {
 						return childElement.getTextContent();
-					}
-					else {
+					} else {
 						return getTextContent(childElement, remainPath);
 					}
 				}
@@ -281,7 +288,7 @@ public class Main {
 		}
 		return "";
 	}
-	
+
 	private static Integer getNumberOfTracksInRelease(Element element) {
 		Integer noOfTracks = 0;
 		NodeList trackList = element.getElementsByTagName("track-list");
@@ -291,46 +298,37 @@ public class Main {
 		}
 		return noOfTracks;
 	}
-	
+
 	private static void printProgress(long startTime, long total, long current, String info) {
-	    long eta = current == 0 ? 0 : 
-	        (total - current) * (System.currentTimeMillis() - startTime) / current;
+		long eta = current == 0 ? 0 : (total - current) * (System.currentTimeMillis() - startTime) / current;
 
-	    String etaHms = current == 0 ? "N/A" : 
-	            String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(eta),
-	                    TimeUnit.MILLISECONDS.toMinutes(eta) % TimeUnit.HOURS.toMinutes(1),
-	                    TimeUnit.MILLISECONDS.toSeconds(eta) % TimeUnit.MINUTES.toSeconds(1));
+		String etaHms = current == 0 ? "N/A"
+				: String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(eta),
+						TimeUnit.MILLISECONDS.toMinutes(eta) % TimeUnit.HOURS.toMinutes(1),
+						TimeUnit.MILLISECONDS.toSeconds(eta) % TimeUnit.MINUTES.toSeconds(1));
 
-	    StringBuilder string = new StringBuilder(115);   
-	    int percent = (int) (current * 100 / total);
-	    string
-	        .append('\r')
-	        .append(String.join("", Collections.nCopies(percent == 0 ? 2 : 2 - (int) (Math.log10(percent)), " ")))
-	        .append(String.format(" %d%% [", percent))
-	        .append(String.join("", Collections.nCopies(percent * 2 / 3, "=")))
-	        .append('>')
-	        .append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " ")))
-	        .append(']')
-	        .append(info)
-	        .append(String.format(", ETA: %s", etaHms));
+		StringBuilder string = new StringBuilder(115);
+		int percent = (int) (current * 100 / total);
+		string.append('\r')
+				.append(String.join("", Collections.nCopies(percent == 0 ? 2 : 2 - (int) (Math.log10(percent)), " ")))
+				.append(String.format(" %d%% [", percent))
+				.append(String.join("", Collections.nCopies(percent * 2 / 3, "="))).append('>')
+				.append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " "))).append(']').append(info)
+				.append(String.format(", ETA: %s", etaHms));
 
-	    System.out.print(string);
+		System.out.print(string);
 	}
-	
+
 	private static String prepareProgressBarInfo(int currentAlbum, int allAlbums, int currentTrack, int allTracks) {
 		String albums = "" + currentAlbum + "/" + allAlbums;
 		String tracks = "" + currentTrack + "/" + allTracks;
 		StringBuilder output = new StringBuilder(18);
-		output
-			.append(" ALB ")
-			.append(String.join("", Collections.nCopies(String.valueOf(allAlbums).length() * 2 + 1 - albums.length(), " ")))
-			.append(albums)
-			.append(", TRK ")
-			.append(String.join("", Collections.nCopies(5 - tracks.length(), " ")))
-			.append(tracks);
-		
-		
+		output.append(" ALB ")
+				.append(String.join("",
+						Collections.nCopies(String.valueOf(allAlbums).length() * 2 + 1 - albums.length(), " ")))
+				.append(albums).append(", TRK ").append(String.join("", Collections.nCopies(5 - tracks.length(), " ")))
+				.append(tracks);
+
 		return output.toString();
 	}
 }
-
