@@ -29,7 +29,7 @@ import my.project.musicbrainz.model.Recording;
 import my.project.musicbrainz.model.RelationArtist;
 import my.project.musicbrainz.model.RelationWork;
 
-public class Main {
+public class MB2mp3tag {
 	static Map<String, Artist> artists = new HashMap<>();
 	static Map<String, Recording> recordings = new HashMap<>();
 	static Map<String, Work> works = new HashMap<>();
@@ -37,22 +37,17 @@ public class Main {
 	static DocumentBuilderFactory dbf;
 	static DocumentBuilder db;
 
-	public static final Logger logger = LogManager.getLogger(Main.class);
+	public static final Logger logger = LogManager.getLogger(MB2mp3tag.class);
 
 	public static void main(String[] args) {
-		ParametersParser parametersParser = new ParametersParser(args);
+		ParametersParserAndValidator parametersParser = new ParametersParserAndValidator(MB2mp3tag.class.getSimpleName(), args);
 		if (!parametersParser.areParametersValid()) {
 			return;
 		}
 
 		xmlProvider = new XMLProvider("MusicBrainzCache");
 		try {
-
-			// e5db824a-6b2c-4200-9f17-ca4c6adf6ace
-			// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
-			// 07da4b32-1a0d-4a9f-ae62-b997321fb946
-			// b0837172-673c-4416-80d6-8a5801e6f102 - Andras Schiff - Mozart Piano Concertos
-			File xmlRelease = xmlProvider.getRelease("b0837172-673c-4416-80d6-8a5801e6f102").toFile();
+			File xmlRelease = xmlProvider.getRelease(parametersParser.getReleaseId()).toFile();
 			dbf = DocumentBuilderFactory.newInstance();
 			try {
 				db = dbf.newDocumentBuilder();
