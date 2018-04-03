@@ -3,11 +3,13 @@ package my.project.musicbrainz;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,7 +38,8 @@ public class MB2mp3tag {
 	static XMLProvider xmlProvider;
 	static DocumentBuilderFactory dbf;
 	static DocumentBuilder db;
-
+	static List<String> output4mp3tag;
+	
 	public static final Logger logger = LogManager.getLogger(MB2mp3tag.class);
 
 	public static void main(String[] args) {
@@ -44,8 +47,16 @@ public class MB2mp3tag {
 		if (!parametersParser.areParametersValid()) {
 			return;
 		}
-
+//		if (parametersParser.areParametersValid()) {
+//			System.out.println(parametersParser.getMp3Tags());
+//			System.out.println(parametersParser.getReleaseId());
+//			System.out.println(parametersParser.getXmlCacheFolder());
+//			return;
+//		}
+		
 		xmlProvider = new XMLProvider("MusicBrainzCache");
+		output4mp3tag = new ArrayList<>();
+		
 		try {
 			File xmlRelease = xmlProvider.getRelease(parametersParser.getReleaseId()).toFile();
 			dbf = DocumentBuilderFactory.newInstance();
@@ -112,23 +123,10 @@ public class MB2mp3tag {
 							recordings.put(recordingId, recording);
 							track.setRecording(recording);
 							trackList.add(track);
+							addToMp3tagOutputList(track, parametersParser.getMp3Tags());
 							noOfProcessedTrack += 1;
 							printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, prepareProgressBarInfo(
 									currentMedium + 1, noOfMediums, currentTrack + 1, noOfTracksInMedium));
-							/*
-							 * logger.debug("Disc " + Mp3tagsValuesProvider.getDiscNumber(track) + "/" +
-							 * Mp3tagsValuesProvider.getDiscNumber(track) + "|" + "Track " +
-							 * Mp3tagsValuesProvider.getTrackNumber(track) + "/" +
-							 * Mp3tagsValuesProvider.getTrackTotal(track) + "|" +
-							 * Mp3tagsValuesProvider.getAlbumName(track) + "|" +
-							 * Mp3tagsValuesProvider.getTrackTitle(track) + ": " +
-							 * Mp3tagsValuesProvider.getTrackLength(track) + "|" +
-							 * Mp3tagsValuesProvider.getUrl(track) + "|" +
-							 * Mp3tagsValuesProvider.getArtist(track) + "|" +
-							 * Mp3tagsValuesProvider.getOrganization(track) + "|" +
-							 * Mp3tagsValuesProvider.getComposer(track, false) + "|" +
-							 * Mp3tagsValuesProvider.getComment(track));
-							 */
 						}
 						medium.setTrackList(trackList);
 						mediumList.add(medium);
@@ -325,5 +323,58 @@ public class MB2mp3tag {
 				.append(tracks);
 
 		return output.toString();
+	}
+	
+	private static void addToMp3tagOutputList(Track track, String tags) {
+		List<String> tagList = Arrays.asList(tags.split(Pattern.quote("|")));
+		for (int i = 0; i < tagList.size(); i++) {
+			String tagValue;
+			switch (tagList.get(i)) {
+			case "discnumber":
+				tagValue = Mp3tagsValuesProvider.getDiscNumber(track);
+				break;
+			case "disctotal":
+				tagValue = Mp3tagsValuesProvider.getDiscTotal(track);
+				break;
+			case "album":
+				tagValue = Mp3tagsValuesProvider.getAlbumName(track);
+				break;
+			case "tracknumber":
+				tagValue = Mp3tagsValuesProvider.getTrackNumber(track);
+				break;
+			case "tracktotal":
+				tagValue = Mp3tagsValuesProvider.getTrackTotal(track);
+				break;
+			case "title":
+				tagValue = Mp3tagsValuesProvider.getTrackTitle(track);
+				break;
+			case "composer":
+				tagValue = Mp3tagsValuesProvider.getComposer(track, false);
+				break;
+			case "artist":
+				tagValue = Mp3tagsValuesProvider.getArtist(track);
+				break;
+			case "year":
+				tagValue = Mp3tagsValuesProvider.getComposingDate(track);
+				break;
+			case "organization":
+				tagValue = Mp3tagsValuesProvider.getOrganization(track);
+				break;
+			case "comment":
+				tagValue = Mp3tagsValuesProvider.getComment(track);
+				break;
+			case "url":
+				tagValue = Mp3tagsValuesProvider.getUrl(track);
+				break;
+			case "length":
+				tagValue = Mp3tagsValuesProvider.getTrackLength(track);
+				break;
+			default:
+				tagValue = "";
+				break;		
+			}
+			tagList.set(i, tagValue);
+		}
+		output4mp3tag.add(String.join("|", tagList));
 	}
 }
