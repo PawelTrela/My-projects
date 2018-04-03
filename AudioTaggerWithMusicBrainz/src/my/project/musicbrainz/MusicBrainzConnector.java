@@ -27,12 +27,8 @@ public class MusicBrainzConnector {
 	    Path targetPath = new File(targetDirectory + File.separator + fileName).toPath();
 	    HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
 	    httpConnection.setRequestMethod("GET");
-	    //httpConnection.setRequestProperty("Content-Type", "application/xhtml+xml;charset=UTF-8");
 	    httpConnection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8");
 	    httpConnection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.146 Safari/537.36");
-//	    httpConnection.setRequestProperty("", "");
-//	    httpConnection.setRequestProperty("", "");
-//	    httpConnection.setRequestProperty("", "");
 	    httpConnection.setDoOutput(true);
 	    Files.copy(httpConnection.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 	    return targetPath;

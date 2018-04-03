@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -17,13 +16,15 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 public class ParametersParserAndValidator  {
+	private String[] commandLineArguments;
 	private String programName;
 	private String releaseId;
 	private Properties properties;
-	private Options options;
+	private Options allowedOptions;
 	private String errorPreamble;
 	private boolean parametersAreValid;
 	private File cacheFolder;
+	private boolean parametersWereValidated;
 	
 	private static final String OPTION_SHORT_HELP = "h";
 	private static final String OPTION_LONG_HELP = "help";
@@ -48,30 +49,37 @@ public class ParametersParserAndValidator  {
 	
 	public ParametersParserAndValidator(String programName, String[] commandLineArguments) {
 		this.programName = programName;
+		this.commandLineArguments = commandLineArguments;
 		parametersAreValid = false;
 		errorPreamble = "";
 		releaseId = "";
-		CommandLineParser cliParser = new DefaultParser();
-		options = new Options();
-		fillInOptions(options);
+		parametersWereValidated = false;
+	}
+
+	public boolean areParametersValid() {
+		if (parametersWereValidated) {
+			return parametersAreValid;
+		}
 
 		// e5db824a-6b2c-4200-9f17-ca4c6adf6ace
 		// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
 		// 07da4b32-1a0d-4a9f-ae62-b997321fb946
 		// b0837172-673c-4416-80d6-8a5801e6f102 - Andras Schiff - Mozart Piano Concertos
 		
+		CommandLineParser cliParser = new DefaultParser();
+		allowedOptions = createListOfAllowedOptions();
 		commandLineArguments = new String[] { "b0837172-673c-4416-80d6-8a5801e6f102" };
 		
 		try {
-			CommandLine commandLine = cliParser.parse(options, commandLineArguments);
+			CommandLine commandLine = cliParser.parse(allowedOptions, commandLineArguments);
 			if (commandLine.hasOption(OPTION_SHORT_HELP)) {
 				printHelp();
-				return;
+				return false;
 			}
 			else if (commandLine.getArgList().isEmpty()) {
 				errorPreamble = "RELEASE_ID argument is missing.";
 				printHelp();
-				return;
+				return false;
 			}
 			else {
 				Pattern patternForReleaseId = Pattern.compile("[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}");
@@ -82,26 +90,18 @@ public class ParametersParserAndValidator  {
 				else {
 					errorPreamble = "Given argument (" + commandLine.getArgList().get(0) + ") doesn't contains substring matching release id.";
 					printHelp();
-					return;
+					return false;
 				}
 				
 			}
-			Properties defaultProperties = new Properties();
-			defaultProperties.setProperty(OPTION_LONG_XML_CACHE, DEFAULT_FOLDER_CACHE);
-			defaultProperties.setProperty(OPTION_LONG_TAGS, DEFAULT_TAGS);
-			defaultProperties.setProperty(OPTION_LONG_CONSOLE_OUTPUT, "0");
-			defaultProperties.setProperty(OPTION_LONG_SKIP_CACHE, "0");
-			defaultProperties.setProperty(OPTION_LONG_RE_CACHE, "0");
-			defaultProperties.setProperty(OPTION_LONG_OVERWRITE_OUTPUT, "0");
-			
-			if (!loadPropertiesFromFile(programName, commandLine, defaultProperties)) {
-				return;
+			if (!loadPropertiesFromFile(commandLine)) {
+				return false;
 			}
 
 			putOptionsToProperties(commandLine);
 			
 			if (!checkXmlFolder(commandLine)) {
-				return;
+				return false;
 			}
 			
 			parametersAreValid = true;
@@ -115,14 +115,12 @@ public class ParametersParserAndValidator  {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-
-	public boolean areParametersValid() {
+		
 		return parametersAreValid;
 	}
 	
 	public boolean isXmlCacheActive() {
-		if (properties.get(OPTION_LONG_SKIP_CACHE).equals("1")) {
+		if (areParametersValid() && properties.get(OPTION_LONG_SKIP_CACHE).equals("1")) {
 			return false;
 		}
 		else {
@@ -131,7 +129,7 @@ public class ParametersParserAndValidator  {
 	}
 	
 	public boolean isXmlReCacheActive() {
-		if (properties.get(OPTION_LONG_RE_CACHE).equals("1")) {
+		if (areParametersValid() && properties.get(OPTION_LONG_RE_CACHE).equals("1")) {
 			return true;
 		}
 		else {
@@ -144,7 +142,7 @@ public class ParametersParserAndValidator  {
 	}
 	
 	public boolean isConsoleOutput() {
-		if (properties.get(OPTION_LONG_CONSOLE_OUTPUT).equals("1")) {
+		if (areParametersValid() && properties.get(OPTION_LONG_CONSOLE_OUTPUT).equals("1")) {
 			return true;
 		}
 		else {
@@ -164,7 +162,7 @@ public class ParametersParserAndValidator  {
 	}
 	
 	public boolean canOutputFileBeOverwritten() {
-		if (properties.get(OPTION_LONG_OVERWRITE_OUTPUT).equals("1")) {
+		if (areParametersValid() && properties.get(OPTION_LONG_OVERWRITE_OUTPUT).equals("1")) {
 			return true;
 		}
 		else {
@@ -173,7 +171,12 @@ public class ParametersParserAndValidator  {
 	}
 	
 	public String getMp3Tags() {
-		return properties.getProperty(OPTION_LONG_TAGS);
+		if (areParametersValid()) {
+			return properties.getProperty(OPTION_LONG_TAGS);
+		}
+		else {
+			return "";
+		}
 	}
 	
 	public String getReleaseId() {
@@ -245,10 +248,10 @@ public class ParametersParserAndValidator  {
 		}
 	}
 
-	private boolean loadPropertiesFromFile(String programName, CommandLine commandLine, Properties defaultProperties)
+	private boolean loadPropertiesFromFile(CommandLine commandLine)
 			throws FileNotFoundException, IOException {
+		Properties defaultProperties = getDefaultProperties();
 		properties = new Properties(defaultProperties);
-		
 		File propertiesFilePath;
 		boolean isPropertiesFilePresent = false;
 		if (commandLine.hasOption(OPTION_SHORT_PROPERTIES)) {
@@ -291,14 +294,13 @@ public class ParametersParserAndValidator  {
 						+ "It could be only release id (e.g. b0837172-673c-4416-80d6-8a5801e6f102) or text containing release id "
 						+ "(e.g. url copied from browser: https://musicbrainz.org/release/07da4b32-1a0d-4a9f-ae62-b997321fb946)."
 						+ "\n\nOptions:",
-						options,
+						allowedOptions,
 						"\nIf you encounter a problem or if you have any questions, feel free and let me know (pwtrela@gmail.com)",
 						true);
 	}
 
-
-
-	private void fillInOptions(Options options) {
+	private Options createListOfAllowedOptions() {
+		Options options = new Options();
 		options.addOption(OPTION_SHORT_HELP, OPTION_LONG_HELP, false, "Prints this message");
 		options.addOption(OPTION_SHORT_PROPERTIES, OPTION_LONG_PROPERTIES, true,
 				"Path to properties file. If path is not given, then it looks for file in current working directory."
@@ -321,5 +323,17 @@ public class ParametersParserAndValidator  {
 				"Download xml files directly from musicbrainz.org site, even if they're present in local cache folder "
 						+ "and saves them in local cache folder.\nUse this option only if you've noticed that release's "
 						+ "data has been changed since last download of xml-s");
+		return options;
+	}
+	
+	private Properties getDefaultProperties() {
+		Properties defaultProperties = new Properties();
+		defaultProperties.setProperty(OPTION_LONG_XML_CACHE, DEFAULT_FOLDER_CACHE);
+		defaultProperties.setProperty(OPTION_LONG_TAGS, DEFAULT_TAGS);
+		defaultProperties.setProperty(OPTION_LONG_CONSOLE_OUTPUT, "0");
+		defaultProperties.setProperty(OPTION_LONG_SKIP_CACHE, "0");
+		defaultProperties.setProperty(OPTION_LONG_RE_CACHE, "0");
+		defaultProperties.setProperty(OPTION_LONG_OVERWRITE_OUTPUT, "0");
+		return defaultProperties;
 	}
 }
