@@ -72,11 +72,6 @@ public class ParametersParserAndValidator  {
 		if (parametersWereValidated) {
 			return parametersAreValid;
 		}
-
-		// e5db824a-6b2c-4200-9f17-ca4c6adf6ace
-		// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
-		// 07da4b32-1a0d-4a9f-ae62-b997321fb946
-		// b0837172-673c-4416-80d6-8a5801e6f102 - Andras Schiff - Mozart Piano Concertos
 		parametersWereValidated = true;
 		CommandLineParser cliParser = new DefaultParser();
 		allowedOptions = createListOfAllowedOptions();
