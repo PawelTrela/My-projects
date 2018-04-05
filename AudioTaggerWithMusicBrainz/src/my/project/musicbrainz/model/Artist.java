@@ -60,7 +60,7 @@ public class Artist {
 	}
 	
 	public Artist() {
-		
+		this("", "", "", "", "", "", "", "");
 	}
 	
 	public Artist(String id, String name, String sortName, String type, String country, String area,

@@ -50,7 +50,7 @@ public class Release {
 	}
 
 	public Release() {
-		
+		this("", "", "", "", null);
 	}
 	
 	public Release(String id, String title, String label, String mediumListCount, List<Medium> mediumList) {

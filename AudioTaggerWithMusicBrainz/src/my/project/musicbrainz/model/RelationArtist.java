@@ -38,7 +38,7 @@ public class RelationArtist {
 		this.artist = artist;
 	}
 	public RelationArtist() {
-		
+		this("", "", "", "", null);
 	}
 	
 	public RelationArtist(String type, String attribute, String beginDate, String endDate, Artist artist) {

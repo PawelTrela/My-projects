@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import my.project.musicbrainz.model.Artist;
 import my.project.musicbrainz.model.Medium;
@@ -40,7 +41,7 @@ public class Mp3tagsValuesProvider {
 				valueToReturn.append(", " + albumTitle);
 			}
 		}
-		return valueToReturn.toString();
+		return normalize(valueToReturn.toString());
 	}
 
 	public static String getTrackNumber(Track track) {
@@ -106,7 +107,7 @@ public class Mp3tagsValuesProvider {
 				}
 			}
 		}
-		return valueToReturn;
+		return normalize(valueToReturn);
 	}
 
 	public static String getArtist(Track track) {
@@ -143,7 +144,7 @@ public class Mp3tagsValuesProvider {
 				valueToReturn += entry.getValue();
 			}
 		}
-		return valueToReturn;
+		return normalize(valueToReturn);
 	}
 
 	public static String getRecordingDate(Track track) {
@@ -175,7 +176,7 @@ public class Mp3tagsValuesProvider {
 	}
 
 	public static String getOrganization(Track track) {
-		return track.getParent().getParent().getLabel();
+		return normalize(track.getParent().getParent().getLabel());
 	}
 
 	public static String getComment(Track track) {
@@ -197,7 +198,7 @@ public class Mp3tagsValuesProvider {
 				valueToReturn.append(" in " + composingDate);
 			}
 		}
-		return valueToReturn.toString();
+		return normalize(valueToReturn.toString());
 	}
 
 	public static String getUrl(Track track) {
@@ -209,5 +210,10 @@ public class Mp3tagsValuesProvider {
 			return ", ";
 		}
 		return "";
+	}
+	
+	private static String normalize(String textToNormalize) {
+		String outputString = textToNormalize.replaceAll(Pattern.quote("|"), "_");
+		return outputString;
 	}
 }

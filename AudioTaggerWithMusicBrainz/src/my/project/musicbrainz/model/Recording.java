@@ -34,7 +34,7 @@ public class Recording {
 	}
 	
 	public Recording() {
-		
+		this("", "", null, null);
 	}
 	
 	public Recording(String id, String title, List<RelationArtist> relationArtist, RelationWork relationWork) {

@@ -26,7 +26,7 @@ public class Work {
 		this.relationArtist = relationArtist;
 	}
 	public Work() {
-		
+		this("", "", null);
 	}
 	
 	public Work(String id, String title, List<RelationArtist> relationArtist) {

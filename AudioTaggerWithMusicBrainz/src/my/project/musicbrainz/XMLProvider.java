@@ -1,42 +1,60 @@
 package my.project.musicbrainz;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class XMLProvider {
-	private String xmlFilesDirectoryLocation;
-
+	private static final Logger logger = LogManager.getLogger();
+	private ParametersParserAndValidator parametersParser;
 	
-	public XMLProvider(String xmlFilesDirectoryLocation) {
-		this.xmlFilesDirectoryLocation = xmlFilesDirectoryLocation;
+	public XMLProvider(ParametersParserAndValidator parametersParser) {
+		this.parametersParser = parametersParser;
 	}
 	
-	public Path getRelease(String releaseId) throws IOException {
+	public InputStream getRelease(String releaseId) throws IOException, InterruptedException {
 		return getXMLFile("release", releaseId);
 	}
 	
-	public Path getRecording(String recordingId) throws IOException {
+	public InputStream getRecording(String recordingId) throws IOException, InterruptedException {
 		return getXMLFile("recording", recordingId);
 	}
 	
-	public Path getArtist(String artistId) throws IOException {
+	public InputStream getArtist(String artistId) throws IOException, InterruptedException {
 		return getXMLFile("artist", artistId);
 	}
 	
-	public Path getWork(String workId) throws IOException {
+	public InputStream getWork(String workId) throws IOException, InterruptedException {
 		return getXMLFile("work", workId);
 	}
 	
-	private Path getXMLFile(String type, String id) throws IOException {
-		File xmlFile = new File(xmlFilesDirectoryLocation + File.separator + type + "-" + id + ".xml");
-		Path xmlPath;
-		if (xmlFile.isFile()) {
-			xmlPath = xmlFile.toPath();
+	private InputStream getXMLFile(String type, String id) throws IOException, InterruptedException {
+		InputStream stream = null;
+		if (parametersParser.isXmlCacheActive() && !parametersParser.isXmlReCacheActive()) {
+			File xmlFile = new File(parametersParser.getXmlCacheDirectory().toString() + File.separator + type + "-" + id + ".xml");
+			if (xmlFile.isFile()) {
+				logger.debug("Got file " + xmlFile);
+				stream = new FileInputStream(xmlFile);
+			}
 		}
-		else {
-			xmlPath = MusicBrainzConnector.downloadXML(type, id, xmlFilesDirectoryLocation);
+		if (stream == null) {
+			InputStream httpStream = MusicBrainzConnector.downloadXML(type, id);
+			if (parametersParser.isXmlCacheActive()) {
+				String fileName = type + "-" + id + ".xml";
+				Path targetPath = new File(parametersParser.getXmlCacheDirectory() + File.separator + fileName).toPath();
+				logger.debug("Saving downloaded xml to file " + targetPath);
+				Files.copy(httpStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+				httpStream.close();
+				stream = new FileInputStream(targetPath.toFile());
+			}
 		}
-		return xmlPath;
+		return stream;
 	}
 }

@@ -25,6 +25,7 @@ public class RelationWork {
 	}
 	
 	public RelationWork() {
+		this("", "", null);
 	}
 	
 	public RelationWork(String type, String date, Work work) {

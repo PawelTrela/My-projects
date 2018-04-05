@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,6 +17,8 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ParametersParserAndValidator  {
 	private String[] commandLineArguments;
@@ -23,7 +28,9 @@ public class ParametersParserAndValidator  {
 	private Options allowedOptions;
 	private String errorPreamble;
 	private boolean parametersAreValid;
-	private File cacheFolder;
+	private File cacheDirectory;
+	private File outputDirectory;
+	private String outputFileName;
 	private boolean parametersWereValidated;
 	
 	private static final String OPTION_SHORT_HELP = "h";
@@ -31,9 +38,11 @@ public class ParametersParserAndValidator  {
 	private static final String OPTION_SHORT_PROPERTIES = "p";
 	private static final String OPTION_LONG_PROPERTIES = "properties";
 	private static final String OPTION_SHORT_XML_CACHE = "x";
-	private static final String OPTION_LONG_XML_CACHE = "xml-cache";
-	private static final String OPTION_SHORT_OUTPUT = "o";
-	private static final String OPTION_LONG_OUTPUT = "output";
+	private static final String OPTION_LONG_XML_CACHE = "xml-cache-directory";
+	private static final String OPTION_SHORT_OUTPUT_DIRECTORY = "d";
+	private static final String OPTION_LONG_OUTPUT_DIRECTORY = "output-directory";
+	private static final String OPTION_SHORT_OUTPUT_FILE = "o";
+	private static final String OPTION_LONG_OUTPUT_FILE = "output-file";
 	private static final String OPTION_SHORT_OVERWRITE_OUTPUT = "O";
 	private static final String OPTION_LONG_OVERWRITE_OUTPUT = "overwrite-output-file";
 	private static final String OPTION_SHORT_TAGS = "t";
@@ -44,8 +53,10 @@ public class ParametersParserAndValidator  {
 	private static final String OPTION_LONG_SKIP_CACHE = "skip-cache";
 	private static final String OPTION_SHORT_RE_CACHE = "r";
 	private static final String OPTION_LONG_RE_CACHE = "re-cache";
-	private static final String DEFAULT_TAGS = "discnumber|disctotal|album|track|tracknumber|tracktotal|title|composer|artist|year|organization|comment|url";
-	private static final String DEFAULT_FOLDER_CACHE = "MusicBrainzCache";
+	private static final String DEFAULT_TAGS = "%discnumber%|%disctotal%|%album%|%track%|%tracknumber%|%tracktotal%|%title%|%composer%|%artist%|%year%|%organization%|%comment%|%url%";
+	private static final String DEFAULT_CACHE_DIRECTORY = "MusicBrainzCache";
+	
+	private static final Logger logger = LogManager.getLogger();
 	
 	public ParametersParserAndValidator(String programName, String[] commandLineArguments) {
 		this.programName = programName;
@@ -54,6 +65,7 @@ public class ParametersParserAndValidator  {
 		errorPreamble = "";
 		releaseId = "";
 		parametersWereValidated = false;
+		outputFileName = "";
 	}
 
 	public boolean areParametersValid() {
@@ -65,12 +77,12 @@ public class ParametersParserAndValidator  {
 		// 9c5c043e-bc69-4edb-81a4-1aaf9c81e6dc - Glenn Gould Remastered
 		// 07da4b32-1a0d-4a9f-ae62-b997321fb946
 		// b0837172-673c-4416-80d6-8a5801e6f102 - Andras Schiff - Mozart Piano Concertos
-		
+		parametersWereValidated = true;
 		CommandLineParser cliParser = new DefaultParser();
 		allowedOptions = createListOfAllowedOptions();
-		commandLineArguments = new String[] { "b0837172-673c-4416-80d6-8a5801e6f102" };
 		
 		try {
+			logger.debug("Command line arguments: " + Arrays.toString(commandLineArguments));
 			CommandLine commandLine = cliParser.parse(allowedOptions, commandLineArguments);
 			if (commandLine.hasOption(OPTION_SHORT_HELP)) {
 				printHelp();
@@ -100,36 +112,35 @@ public class ParametersParserAndValidator  {
 
 			putOptionsToProperties(commandLine);
 			
-			if (!checkXmlFolder(commandLine)) {
+			logger.debug("Effective properties: " + properties.toString());
+			
+			if (!checkCacheDirectory(commandLine)) {
+				return false;
+			}
+			
+			if (!checkOutputDirectoryAndFile(commandLine)) {
 				return false;
 			}
 			
 			parametersAreValid = true;
-		} catch (ParseException e1) {
-			errorPreamble = e1.getMessage();
+		} catch (ParseException | IOException e) {
+			errorPreamble = e.getMessage();
+			logger.error(e.getStackTrace());
 			printHelp();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		
 		return parametersAreValid;
 	}
 	
 	public boolean isXmlCacheActive() {
-		if (areParametersValid() && properties.get(OPTION_LONG_SKIP_CACHE).equals("1")) {
-			return false;
-		}
-		else {
+		if (areParametersValid() && !properties.getProperty(OPTION_LONG_SKIP_CACHE).equals("1")) {
 			return true;
 		}
+		return false;
 	}
 	
 	public boolean isXmlReCacheActive() {
-		if (areParametersValid() && properties.get(OPTION_LONG_RE_CACHE).equals("1")) {
+		if (areParametersValid() && properties.getProperty(OPTION_LONG_RE_CACHE).equals("1")) {
 			return true;
 		}
 		else {
@@ -137,37 +148,33 @@ public class ParametersParserAndValidator  {
 		}
 	}
 	
-	public File getXmlCacheFolder() {
-		return cacheFolder;
-	}
-	
-	public boolean isConsoleOutput() {
-		if (areParametersValid() && properties.get(OPTION_LONG_CONSOLE_OUTPUT).equals("1")) {
-			return true;
-		}
-		else {
-			return false;
-		}
+	public File getXmlCacheDirectory() {
+		return cacheDirectory;
 	}
 	
 	public File getOutputFile(String releaseName) {
-		/*
-		 * TODO Jeżeli wyjście jest na konsolę, to zwróć null.
-		 * Jeżeli w opcjach podano ścieżkę do pliku wyjściowego, to sprawdz, czy jest prawidłowa. Jeżeli plik już istnieje,
-		 * to sprawdz, czy może być nadpisywany. Jeżeli nie, to wyświetl pomoc, zwróć null i ustaw parametersAreValid na false.
-		 * Jeżeli w opcjach nie podano ścieżki do pliku wyjściowego, to zbuduj ścieżkę z podanego argumentu i rozszerzenia txt.
-		 * Sprawdz, czy taki plik istnieje i jeżeli tak, to sprawdz, czy można go nadpisać. Jeżeli nie można, to wyświetl pomoc,
-		 * zwróć null i ustaw parametersAreValid na false.
-		 */
-	}
-	
-	public boolean canOutputFileBeOverwritten() {
-		if (areParametersValid() && properties.get(OPTION_LONG_OVERWRITE_OUTPUT).equals("1")) {
-			return true;
+		File outputFile = null;
+		if (areParametersValid() && !isConsoleOutput()) {
+			if (outputFileName.isEmpty()) {
+				outputFileName = releaseName + ".txt";
+			}
+			outputFile = new File(outputDirectory.getAbsolutePath() + File.separator + outputFileName);
+			if (outputFile.exists()) {
+				if (outputFile.isFile()) {
+					if (!canOutputFileBeOverwritten()) {
+						errorPreamble = "File " + outputFile.getPath() + " is already present.";
+						printHelp();
+						return null;
+					}
+				}
+				else {
+					errorPreamble = "There is directory with the same name (" + outputFile.getPath() + ") as desired name for output file.";
+					printHelp();
+					return null;
+				}
+			}
 		}
-		else {
-			return false;
-		}
+		return outputFile;
 	}
 	
 	public String getMp3Tags() {
@@ -183,49 +190,125 @@ public class ParametersParserAndValidator  {
 		return releaseId;
 	}
 	
-	private boolean checkXmlFolder(CommandLine commandLine) {
+	public boolean isConsoleOutput() {
+		if (areParametersValid() && properties.getProperty(OPTION_LONG_CONSOLE_OUTPUT).equals("1")) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private boolean canOutputFileBeOverwritten() {
+		if (areParametersValid() && properties.getProperty(OPTION_LONG_OVERWRITE_OUTPUT).equals("1")) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private boolean checkCacheDirectory(CommandLine commandLine) {
 		if (!properties.getProperty(OPTION_LONG_SKIP_CACHE).equals("1") ) {
-			boolean isPropertiesFolderPresent = false;
+			boolean isDirectoryPresentInProperties = false;
 			if (commandLine.hasOption(OPTION_SHORT_XML_CACHE)) {
 				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_XML_CACHE);
-				cacheFolder = new File(propertyValue);
-				if (!cacheFolder.exists()) {
-					errorPreamble = "Folder specified with option -" + OPTION_SHORT_XML_CACHE + " (" + propertyValue + ") does not exits.";
+				Path path = Paths.get(propertyValue).normalize();
+				cacheDirectory = path.toFile();
+				if (!cacheDirectory.exists()) {
+					errorPreamble = "Directory specified with option -" + OPTION_SHORT_XML_CACHE + " (" + propertyValue + ") does not exits.";
 					printHelp();
 					return false;
 				}
-				else if (!cacheFolder.isDirectory()) {
+				else if (!cacheDirectory.isDirectory()) {
 					errorPreamble = "Path specified with option -" + OPTION_SHORT_XML_CACHE + " (" + propertyValue + ") isn't a directory.";
 					printHelp();
 					return false;
 				}
-				isPropertiesFolderPresent = true;
+				isDirectoryPresentInProperties = true;
 			}
 			else {
-				cacheFolder = new File(DEFAULT_FOLDER_CACHE);
-				if (cacheFolder.exists()) {
-					if (cacheFolder.isFile()) {
-						errorPreamble = "There is a file with name \"" + DEFAULT_FOLDER_CACHE + "\" whilst the program expects folder with that name.";
+				Path path = Paths.get(properties.getProperty(OPTION_LONG_XML_CACHE)).normalize();
+				cacheDirectory = path.toFile();
+				if (cacheDirectory.exists()) {
+					if (cacheDirectory.isFile()) {
+						errorPreamble = "There is a file with name \"" + properties.getProperty(OPTION_LONG_XML_CACHE) + "\" whilst the program expects directory with that name.";
 						printHelp();
 						return false;
 					}
-					else if (!cacheFolder.canWrite()) {
-						errorPreamble = "Program doesn't have write access to cache folder (" + DEFAULT_FOLDER_CACHE + ").";
+					else if (!cacheDirectory.canWrite()) {
+						errorPreamble = "Program doesn't have write access to cache directory (" + properties.getProperty(OPTION_LONG_XML_CACHE) + ").";
 						printHelp();
 						return false;
 					}
-					isPropertiesFolderPresent = true;
+					isDirectoryPresentInProperties = true;
 				}
 			}
-			if (!isPropertiesFolderPresent) {
-				cacheFolder = new File(DEFAULT_FOLDER_CACHE);
-				boolean success = cacheFolder.mkdirs();
+			if (!isDirectoryPresentInProperties) {
+				cacheDirectory = new File(DEFAULT_CACHE_DIRECTORY);
+				boolean success = cacheDirectory.mkdirs();
 				if (!success) {
-					errorPreamble = "There was a problem with creating the folder \"" + DEFAULT_FOLDER_CACHE + "\".";
+					errorPreamble = "There was a problem with creating the directory \"" + DEFAULT_CACHE_DIRECTORY + "\".";
 					printHelp();
 					return false;
 				}
 			}
+		}
+		return true;
+	}
+	
+	private boolean checkOutputDirectoryAndFile(CommandLine commandLine) {
+		if (!properties.getProperty(OPTION_LONG_CONSOLE_OUTPUT).equals("1") ) {
+			if (commandLine.hasOption(OPTION_SHORT_OUTPUT_DIRECTORY)) {
+				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_OUTPUT_DIRECTORY);
+				Path path = Paths.get(propertyValue).normalize();
+				outputDirectory = path.toFile();
+				if (!outputDirectory.exists()) {
+					errorPreamble = "Directory specified with option -" + OPTION_SHORT_OUTPUT_DIRECTORY + " (" + propertyValue + ") does not exits.";
+					printHelp();
+					return false;
+				}
+				else if (!outputDirectory.isDirectory()) {
+					errorPreamble = "Path specified with option -" + OPTION_SHORT_OUTPUT_DIRECTORY + " (" + propertyValue + ") isn't a directory.";
+					printHelp();
+					return false;
+				}
+			}
+			else {
+				Path path = Paths.get(properties.getProperty(OPTION_LONG_OUTPUT_DIRECTORY)).normalize();
+				outputDirectory = path.toFile();
+				if (outputDirectory.exists()) {
+					if (outputDirectory.isFile()) {
+						errorPreamble = "There is a file with name \"" + properties.getProperty(OPTION_LONG_OUTPUT_DIRECTORY) + "\" whilst the program expects directory with that name.";
+						printHelp();
+						return false;
+					}
+					else if (!outputDirectory.canWrite()) {
+						errorPreamble = "Program doesn't have write access to output directory (" + properties.getProperty(OPTION_LONG_OUTPUT_DIRECTORY) + ").";
+						printHelp();
+						return false;
+					}
+				}
+			}
+			Path path = null;
+			if (commandLine.hasOption(OPTION_SHORT_OUTPUT_FILE)) {
+				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_OUTPUT_FILE);
+				path = Paths.get(propertyValue).normalize();
+				outputFileName = path.toString();
+			}
+			else {
+				String propertyValue = properties.getProperty(OPTION_LONG_OUTPUT_FILE);
+				if (!propertyValue.isEmpty()) {
+					path = Paths.get(propertyValue).normalize();
+					outputFileName = path.toString();
+				}
+			}
+			if (path != null && path.getNameCount() > 1) {
+				errorPreamble = "File name (" + path.toString() + ") is invalid (it contains directory name).";
+				printHelp();
+				return false;
+			}
+
 		}
 		return true;
 	}
@@ -285,7 +368,8 @@ public class ParametersParserAndValidator  {
 
 	private void printHelp() {
 		if (!errorPreamble.isEmpty()) {
-			System.out.println(errorPreamble + "\n");
+			System.out.println("\n\n" + errorPreamble + "\n");
+			logger.error(errorPreamble);
 		}
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.setWidth(140);
@@ -295,7 +379,7 @@ public class ParametersParserAndValidator  {
 						+ "(e.g. url copied from browser: https://musicbrainz.org/release/07da4b32-1a0d-4a9f-ae62-b997321fb946)."
 						+ "\n\nOptions:",
 						allowedOptions,
-						"\nIf you encounter a problem or if you have any questions, feel free and let me know (pwtrela@gmail.com)",
+						"\nIf you encounter a problem or if you have any questions, feel free and let me know (pwtrela@gmail.com).",
 						true);
 	}
 
@@ -306,30 +390,35 @@ public class ParametersParserAndValidator  {
 				"Path to properties file. If path is not given, then it looks for file in current working directory."
 				+ "\nDefault: " + programName + ".properties");
 		options.addOption(OPTION_SHORT_XML_CACHE, OPTION_LONG_XML_CACHE, true,
-				"Path to folder, where xml files downloaded from musicbrainz.org site will be stored."
-				+ "\nDefault: " + DEFAULT_FOLDER_CACHE
-				+ "\nThis option is ignored when -s option is in use");
-		options.addOption(OPTION_SHORT_OUTPUT, OPTION_LONG_OUTPUT, true,
-				"Path to file, in which output tags will be saved. If path is not given, then it creates file in current "
-						+ "working directory with name <release name>.txt. This option is ignored when -c option is in use");
+				"Path to directory, where xml files downloaded from musicbrainz.org site will be stored."
+				+ "\nDefault: " + DEFAULT_CACHE_DIRECTORY
+				+ "\nThis option is ignored when -" + OPTION_SHORT_SKIP_CACHE + " option is in use");
+		options.addOption(OPTION_SHORT_OUTPUT_DIRECTORY, OPTION_LONG_OUTPUT_DIRECTORY, true,
+				"Path to directory, in which file with output data will be saved. If path is not given, then output file is created in current "
+						+ "working directory. This option is ignored when -" + OPTION_SHORT_CONSOLE_OUTPUT + " option is in use");
+		options.addOption(OPTION_SHORT_OUTPUT_FILE, OPTION_LONG_OUTPUT_FILE, true,
+				"Name of file, in which output data will be saved. If name is not given, then it creates file "
+						+ "with name <release name>.txt. This option is ignored when -" + OPTION_SHORT_CONSOLE_OUTPUT + " option is in use");
 		options.addOption(OPTION_SHORT_OVERWRITE_OUTPUT, OPTION_LONG_OVERWRITE_OUTPUT, false, "If output file is available on disk, then it will be overwritten."
-				+ "\nThis option is ignored when -c option is in use");
+				+ "\nThis option is ignored when -" + OPTION_SHORT_CONSOLE_OUTPUT + " option is in use");
 		options.addOption(OPTION_SHORT_TAGS, OPTION_LONG_TAGS, true, "Template tags for output. Default: " + DEFAULT_TAGS);
 		options.addOption(OPTION_SHORT_CONSOLE_OUTPUT, OPTION_LONG_CONSOLE_OUTPUT, false, "Prints output to console (does't create output file)");
 		options.addOption(OPTION_SHORT_SKIP_CACHE, OPTION_LONG_SKIP_CACHE, false,
-				"Download xml files directly from musicbrainz.org site and doesn't save it in local cache folder."
+				"Download xml files directly from musicbrainz.org site and doesn't save it in local cache directory."
 				+ "\nThis option is not recommended because it significantly increases the download time and the tag calculation");
 		options.addOption(OPTION_SHORT_RE_CACHE, OPTION_LONG_RE_CACHE, false,
-				"Download xml files directly from musicbrainz.org site, even if they're present in local cache folder "
-						+ "and saves them in local cache folder.\nUse this option only if you've noticed that release's "
+				"Download xml files directly from musicbrainz.org site, even if they're present in local cache directory "
+						+ "and saves them in local cache directory.\nUse this option only if you've noticed that release's "
 						+ "data has been changed since last download of xml-s");
 		return options;
 	}
 	
 	private Properties getDefaultProperties() {
 		Properties defaultProperties = new Properties();
-		defaultProperties.setProperty(OPTION_LONG_XML_CACHE, DEFAULT_FOLDER_CACHE);
+		defaultProperties.setProperty(OPTION_LONG_XML_CACHE, DEFAULT_CACHE_DIRECTORY);
 		defaultProperties.setProperty(OPTION_LONG_TAGS, DEFAULT_TAGS);
+		defaultProperties.setProperty(OPTION_LONG_OUTPUT_DIRECTORY, ".");
+		defaultProperties.setProperty(OPTION_LONG_OUTPUT_FILE, "");
 		defaultProperties.setProperty(OPTION_LONG_CONSOLE_OUTPUT, "0");
 		defaultProperties.setProperty(OPTION_LONG_SKIP_CACHE, "0");
 		defaultProperties.setProperty(OPTION_LONG_RE_CACHE, "0");

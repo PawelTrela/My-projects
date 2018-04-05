@@ -48,7 +48,7 @@ public class Medium {
 		this.parent = parent;
 	}
 	public Medium() {
-		
+		this("", "", "", null);
 	}
 	
 	public Medium(String position, String format, String trackListCount, List<Track> trackList) {

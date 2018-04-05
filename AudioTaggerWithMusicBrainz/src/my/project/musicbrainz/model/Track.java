@@ -46,7 +46,7 @@ public class Track {
 		this.parent = parent;
 	}
 	public Track() {
-		
+		this("", 0, "", 0, null);
 	}
 	
 	public Track(String id, Integer position, String title, Integer length, Recording recording) {

@@ -2,6 +2,9 @@ package my.project.musicbrainz;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,119 +36,125 @@ import my.project.musicbrainz.model.RelationWork;
 
 public class MB2mp3tag {
 	static Map<String, Artist> artists = new HashMap<>();
-	static Map<String, Recording> recordings = new HashMap<>();
 	static Map<String, Work> works = new HashMap<>();
 	static XMLProvider xmlProvider;
 	static DocumentBuilderFactory dbf;
 	static DocumentBuilder db;
 	static List<String> output4mp3tag;
-	
-	public static final Logger logger = LogManager.getLogger(MB2mp3tag.class);
+
+	private static final Logger logger = LogManager.getLogger();
 
 	public static void main(String[] args) {
 		ParametersParserAndValidator parametersParser = new ParametersParserAndValidator(MB2mp3tag.class.getSimpleName(), args);
 		if (!parametersParser.areParametersValid()) {
+			logger.error("Parameters are not valid.");
 			return;
 		}
-//		if (parametersParser.areParametersValid()) {
-//			System.out.println(parametersParser.getMp3Tags());
-//			System.out.println(parametersParser.getReleaseId());
-//			System.out.println(parametersParser.getXmlCacheFolder());
-//			return;
-//		}
-		
-		xmlProvider = new XMLProvider("MusicBrainzCache");
+		xmlProvider = new XMLProvider(parametersParser);
+
 		output4mp3tag = new ArrayList<>();
-		
+
 		try {
-			File xmlRelease = xmlProvider.getRelease(parametersParser.getReleaseId()).toFile();
 			dbf = DocumentBuilderFactory.newInstance();
-			try {
-				db = dbf.newDocumentBuilder();
-				try {
-					Release release = new Release();
-					Document documentRelease = db.parse(xmlRelease);
-					Element elementRelease = (Element) documentRelease.getDocumentElement().getFirstChild();
-					long startTime = System.currentTimeMillis();
-					Integer noOfTracksInRelease = getNumberOfTracksInRelease(elementRelease);
-					Integer noOfProcessedTrack = 0;
-					release.setId(elementRelease.getAttribute("id"));
-					release.setTitle(getTextContent(elementRelease, "title"));
-					release.setLabel(getTextContent(elementRelease, "label-info-list.label-info.label.name"));
-					Element elementMediumList = (Element) elementRelease.getElementsByTagName("medium-list").item(0);
-					release.setMediumListCount(elementMediumList.getAttribute("count"));
-					List<Medium> mediumList = new ArrayList<>();
-					NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
-					int noOfMediums = nodeListMedium.getLength();
-					for (int currentMedium = 0; currentMedium < noOfMediums; currentMedium++) {
-						Element elementMedium = (Element) nodeListMedium.item(currentMedium);
-						Medium medium = new Medium();
-						medium.setParent(release);
-						medium.setPosition(getTextContent(elementMedium, "position"));
-						medium.setTitle(getTextContent(elementMedium, "title"));
-						medium.setFormat(getTextContent(elementMedium, "format"));
-						List<Track> trackList = new ArrayList<>();
-						Element elementTrackList = (Element) elementMedium.getElementsByTagName("track-list").item(0);
-						medium.setTrackListCount(elementTrackList.getAttribute("count"));
-						NodeList nodeListTrack = elementTrackList.getElementsByTagName("track");
-						int noOfTracksInMedium = nodeListTrack.getLength();
-						for (int currentTrack = 0; currentTrack < noOfTracksInMedium; currentTrack++) {
-							Element elementTrack = (Element) nodeListTrack.item(currentTrack);
-							Track track = new Track();
-							track.setParent(medium);
-							track.setId(elementTrack.getAttribute("id"));
-							track.setTitle(getTextContent(elementTrack, "title"));
-							track.setPosition(Integer.parseInt(getTextContent(elementTrack, "position")));
-							track.setLength(Integer.parseInt(getTextContent(elementTrack, "length")));
-							// recording
-							String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0))
-									.getAttribute("id");
-							Recording recording = null;
-							if (recordings.containsKey(recordingId)) {
-								recording = recordings.get(recordingId);
-							} else {
-								File xmlRecording = xmlProvider.getRecording(recordingId).toFile();
-								Document recordingDoc = db.parse(xmlRecording);
-								recording = new Recording();
-								recording.setId(recordingId);
-								Element elementRecording = (Element) recordingDoc.getDocumentElement().getFirstChild();
-								recording.setTitle(getTextContent(elementRecording, "title"));
-								NodeList recordingRelationList = elementRecording.getElementsByTagName("relation-list");
-								for (int k = 0; k < recordingRelationList.getLength(); k++) {
-									Element elementRelationList = (Element) recordingRelationList.item(k);
-									if (elementRelationList.getAttribute("target-type").equals("artist")) {
-										recording.setRelationArtist(createRelationArtistList(elementRelationList));
-									} else if (elementRelationList.getAttribute("target-type").equals("work")) {
-										recording.setRelationWork(createRecordingRelationWork(elementRelationList));
-									}
-								}
-							}
-							recordings.put(recordingId, recording);
-							track.setRecording(recording);
-							trackList.add(track);
-							addToMp3tagOutputList(track, parametersParser.getMp3Tags());
-							noOfProcessedTrack += 1;
-							printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, prepareProgressBarInfo(
-									currentMedium + 1, noOfMediums, currentTrack + 1, noOfTracksInMedium));
+			db = dbf.newDocumentBuilder();
+			InputStream xmlRelease = xmlProvider.getRelease(parametersParser.getReleaseId());
+			Document documentRelease = db.parse(xmlRelease);
+			xmlRelease.close();
+			Element elementRelease = (Element) documentRelease.getDocumentElement().getFirstChild();
+			long startTime = System.currentTimeMillis();
+			Integer noOfTracksInRelease = getNumberOfTracksInRelease(elementRelease);
+			Integer noOfProcessedTrack = 0;
+
+			Release release = new Release();
+			release.setId(elementRelease.getAttribute("id"));
+			release.setTitle(getTextContent(elementRelease, "title"));
+			release.setLabel(getTextContent(elementRelease, "label-info-list.label-info.label.name"));
+			Element elementMediumList = (Element) elementRelease.getElementsByTagName("medium-list").item(0);
+			release.setMediumListCount(elementMediumList.getAttribute("count"));
+
+			List<Medium> mediumList = new ArrayList<>();
+			NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
+			int noOfMediums = nodeListMedium.getLength();
+			for (int currentMedium = 0; currentMedium < noOfMediums; currentMedium++) {
+				Element elementMedium = (Element) nodeListMedium.item(currentMedium);
+
+				Medium medium = new Medium();
+				medium.setParent(release);
+				medium.setPosition(getTextContent(elementMedium, "position"));
+				medium.setTitle(getTextContent(elementMedium, "title"));
+				medium.setFormat(getTextContent(elementMedium, "format"));
+				Element elementTrackList = (Element) elementMedium.getElementsByTagName("track-list").item(0);
+				medium.setTrackListCount(elementTrackList.getAttribute("count"));
+
+				List<Track> trackList = new ArrayList<>();
+				NodeList nodeListTrack = elementTrackList.getElementsByTagName("track");
+				int noOfTracksInMedium = nodeListTrack.getLength();
+				for (int currentTrack = 0; currentTrack < noOfTracksInMedium; currentTrack++) {
+					noOfProcessedTrack += 1;
+					printProgress(startTime, noOfTracksInRelease, noOfProcessedTrack, prepareProgressBarInfo(
+							currentMedium + 1, noOfMediums, currentTrack + 1, noOfTracksInMedium));
+
+					Element elementTrack = (Element) nodeListTrack.item(currentTrack);
+
+					Track track = new Track();
+					track.setParent(medium);
+					track.setId(elementTrack.getAttribute("id"));
+					track.setTitle(getTextContent(elementTrack, "title"));
+					track.setPosition(Integer.parseInt(getTextContent(elementTrack, "position")));
+					track.setLength(Integer.parseInt(getTextContent(elementTrack, "length")));
+
+					String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0))
+							.getAttribute("id");
+
+					InputStream xmlRecording = xmlProvider.getRecording(recordingId);
+					Document recordingDoc = db.parse(xmlRecording);
+					xmlRecording.close();
+					Recording recording = new Recording();
+					recording.setId(recordingId);
+					Element elementRecording = (Element) recordingDoc.getDocumentElement().getFirstChild();
+					recording.setTitle(getTextContent(elementRecording, "title"));
+					NodeList recordingRelationList = elementRecording.getElementsByTagName("relation-list");
+					for (int k = 0; k < recordingRelationList.getLength(); k++) {
+						Element elementRelationList = (Element) recordingRelationList.item(k);
+						if (elementRelationList.getAttribute("target-type").equals("artist")) {
+							recording.setRelationArtist(createRelationArtistList(elementRelationList));
+						} else if (elementRelationList.getAttribute("target-type").equals("work")) {
+							recording.setRelationWork(createRecordingRelationWork(elementRelationList));
 						}
-						medium.setTrackList(trackList);
-						mediumList.add(medium);
 					}
-					release.setMediumList(mediumList);
-					System.out.println("");
-					// logger.debug(release.toString());
-				} catch (SAXException e) {
-					e.printStackTrace();
+					track.setRecording(recording);
+					trackList.add(track);
+					addToMp3tagOutputList(track, parametersParser.getMp3Tags());
 				}
-			} catch (ParserConfigurationException e) {
-				e.printStackTrace();
+				medium.setTrackList(trackList);
+				mediumList.add(medium);
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+			release.setMediumList(mediumList);
+			
+			logger.debug("Output:");
+			output4mp3tag.forEach(item -> logger.debug(item));
+			if (parametersParser.isConsoleOutput()) {
+				System.out.println("\n\n");
+				output4mp3tag.forEach(System.out::println);
+			}
+			else {
+				File outputFile = parametersParser.getOutputFile(release.getTitle());
+				if (outputFile != null) {
+					Files.write(outputFile.toPath(), output4mp3tag, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+					System.out.println("\n\nOutput was saved to file \"" + outputFile.getPath() + "\" successfully.");
+				}
+			}
+			
+			
+		} catch (IOException | ParserConfigurationException | SAXException | InterruptedException e) {
+			logger.error(e.toString());
+			Arrays.asList(e.getStackTrace()).forEach(item -> logger.error("        at " + item));
+			System.out.println("Got error: " + e.getMessage());
 		}
 	}
 
-	private static RelationWork createRecordingRelationWork(Element elementRelationList) {
+	private static RelationWork createRecordingRelationWork(Element elementRelationList) 
+			throws SAXException, IOException, InterruptedException {
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
 		for (int i = 0; i < relation.getLength(); i++) {
 			Element elementRelation = (Element) relation.item(i);
@@ -164,29 +173,18 @@ public class MB2mp3tag {
 		return null;
 	}
 
-	private static Work getWork(String workId) {
+	private static Work getWork(String workId) throws SAXException, IOException, InterruptedException {
 		Work work = null;
 
 		if (works.containsKey(workId)) {
 			work = works.get(workId);
 		} else {
-			File xmlWork = null;
-			try {
-				xmlWork = xmlProvider.getWork(workId).toFile();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			Document workDoc = null;
-			try {
-				workDoc = db.parse(xmlWork);
-			} catch (SAXException | IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			InputStream xmlWork = xmlProvider.getWork(workId);
+			Document workDocument = db.parse(xmlWork);
+			xmlWork.close();
 			work = new Work();
 			work.setId(workId);
-			Element elementWork = (Element) workDoc.getDocumentElement().getFirstChild();
+			Element elementWork = (Element) workDocument.getDocumentElement().getFirstChild();
 			work.setTitle(getTextContent(elementWork, "title"));
 			NodeList workRelationList = elementWork.getElementsByTagName("relation-list");
 			for (int k = 0; k < workRelationList.getLength(); k++) {
@@ -200,7 +198,8 @@ public class MB2mp3tag {
 		return work;
 	}
 
-	private static List<RelationArtist> createRelationArtistList(Element elementRelationList) {
+	private static List<RelationArtist> createRelationArtistList(Element elementRelationList) 
+			throws SAXException, IOException, InterruptedException {
 		List<RelationArtist> relationArtist = new ArrayList<>();
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
 		for (int i = 0; i < relation.getLength(); i++) {
@@ -208,40 +207,26 @@ public class MB2mp3tag {
 			RelationArtist relationArtistMember = new RelationArtist();
 			relationArtistMember.setType(elementRelation.getAttribute("type"));
 			relationArtistMember.setAttribute(getTextContent(elementRelation, "attribute-list.attribute"));
-			// begin, end, target
-			String artistId = getTextContent(elementRelation, "target");
 			relationArtistMember.setBeginDate(getTextContent(elementRelation, "begin"));
 			relationArtistMember.setEndDate(getTextContent(elementRelation, "end"));
-			relationArtistMember.setArtist(getArtist(artistId));
+			relationArtistMember.setArtist(getArtist(getTextContent(elementRelation, "target")));
 			relationArtist.add(relationArtistMember);
 		}
 		return relationArtist;
 	}
 
-	private static Artist getArtist(String artistId) {
+	private static Artist getArtist(String artistId) throws SAXException, IOException, InterruptedException {
 		Artist artist = null;
 
 		if (artists.containsKey(artistId)) {
 			artist = artists.get(artistId);
 		} else {
-			File xmlArtist = null;
-			try {
-				xmlArtist = xmlProvider.getArtist(artistId).toFile();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			Document artistDoc = null;
-			try {
-				artistDoc = db.parse(xmlArtist);
-			} catch (SAXException | IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			InputStream xmlArtist = xmlProvider.getArtist(artistId);
+			Document artistDocument = db.parse(xmlArtist);
+			xmlArtist.close();
 			artist = new Artist();
 			artist.setId(artistId);
-
-			Element elementArtist = (Element) artistDoc.getDocumentElement().getFirstChild();
+			Element elementArtist = (Element) artistDocument.getDocumentElement().getFirstChild();
 			artist.setType(elementArtist.getAttribute("type"));
 			artist.setName(getTextContent(elementArtist, "name"));
 			artist.setSortName(getTextContent(elementArtist, "sort-name"));
@@ -251,18 +236,17 @@ public class MB2mp3tag {
 			artist.setLifeSpanEnd(getTextContent(elementArtist, "life-span.end"));
 			artists.put(artistId, artist);
 		}
-
 		return artist;
 	}
 
 	private static String getTextContent(Element element, String name) {
 		String elementName = "";
-		String remainPath = "";
+		String remainingPath = "";
 		int dotPosition = name.indexOf(".");
 
 		if (dotPosition > 0) {
 			elementName = name.substring(0, dotPosition);
-			remainPath = name.substring(dotPosition + 1, name.length());
+			remainingPath = name.substring(dotPosition + 1, name.length());
 		} else {
 			elementName = name;
 		}
@@ -271,10 +255,10 @@ public class MB2mp3tag {
 			if (children.item(i) instanceof Element) {
 				Element childElement = (Element) children.item(i);
 				if (childElement.getTagName().equals(elementName)) {
-					if (remainPath.isEmpty()) {
+					if (remainingPath.isEmpty()) {
 						return childElement.getTextContent();
 					} else {
-						return getTextContent(childElement, remainPath);
+						return getTextContent(childElement, remainingPath);
 					}
 				}
 			}
@@ -303,11 +287,11 @@ public class MB2mp3tag {
 		StringBuilder string = new StringBuilder(115);
 		int percent = (int) (current * 100 / total);
 		string.append('\r')
-				.append(String.join("", Collections.nCopies(percent == 0 ? 2 : 2 - (int) (Math.log10(percent)), " ")))
-				.append(String.format(" %d%% [", percent))
-				.append(String.join("", Collections.nCopies(percent * 2 / 3, "="))).append('>')
-				.append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " "))).append(']').append(info)
-				.append(String.format(", ETA: %s", etaHms));
+		.append(percent < 10 ? "  " : (percent < 100 ? " " : ""))
+		.append(String.format(" %d%% [", percent))
+		.append(String.join("", Collections.nCopies(percent * 2 / 3, "="))).append('>')
+		.append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " "))).append(']').append(info)
+		.append(String.format(", ETA: %s", etaHms));
 
 		System.out.print(string);
 	}
@@ -317,56 +301,56 @@ public class MB2mp3tag {
 		String tracks = "" + currentTrack + "/" + allTracks;
 		StringBuilder output = new StringBuilder(18);
 		output.append(" ALB ")
-				.append(String.join("",
-						Collections.nCopies(String.valueOf(allAlbums).length() * 2 + 1 - albums.length(), " ")))
-				.append(albums).append(", TRK ").append(String.join("", Collections.nCopies(5 - tracks.length(), " ")))
-				.append(tracks);
+		.append(String.join("",
+				Collections.nCopies(String.valueOf(allAlbums).length() * 2 + 1 - albums.length(), " ")))
+		.append(albums).append(", TRK ").append(String.join("", Collections.nCopies(5 - tracks.length(), " ")))
+		.append(tracks);
 
 		return output.toString();
 	}
-	
+
 	private static void addToMp3tagOutputList(Track track, String tags) {
 		List<String> tagList = Arrays.asList(tags.split(Pattern.quote("|")));
 		for (int i = 0; i < tagList.size(); i++) {
 			String tagValue;
 			switch (tagList.get(i)) {
-			case "discnumber":
+			case "%discnumber%":
 				tagValue = Mp3tagsValuesProvider.getDiscNumber(track);
 				break;
-			case "disctotal":
+			case "%disctotal%":
 				tagValue = Mp3tagsValuesProvider.getDiscTotal(track);
 				break;
-			case "album":
+			case "%album%":
 				tagValue = Mp3tagsValuesProvider.getAlbumName(track);
 				break;
-			case "tracknumber":
+			case "%tracknumber%":
 				tagValue = Mp3tagsValuesProvider.getTrackNumber(track);
 				break;
-			case "tracktotal":
+			case "%tracktotal%":
 				tagValue = Mp3tagsValuesProvider.getTrackTotal(track);
 				break;
-			case "title":
+			case "%title%":
 				tagValue = Mp3tagsValuesProvider.getTrackTitle(track);
 				break;
-			case "composer":
+			case "%composer%":
 				tagValue = Mp3tagsValuesProvider.getComposer(track, false);
 				break;
-			case "artist":
+			case "%artist%":
 				tagValue = Mp3tagsValuesProvider.getArtist(track);
 				break;
-			case "year":
+			case "%year%":
 				tagValue = Mp3tagsValuesProvider.getComposingDate(track);
 				break;
-			case "organization":
+			case "%organization%":
 				tagValue = Mp3tagsValuesProvider.getOrganization(track);
 				break;
-			case "comment":
+			case "%comment%":
 				tagValue = Mp3tagsValuesProvider.getComment(track);
 				break;
-			case "url":
+			case "%url%":
 				tagValue = Mp3tagsValuesProvider.getUrl(track);
 				break;
-			case "length":
+			case "%length%":
 				tagValue = Mp3tagsValuesProvider.getTrackLength(track);
 				break;
 			default:
