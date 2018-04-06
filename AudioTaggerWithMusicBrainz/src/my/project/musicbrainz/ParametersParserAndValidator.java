@@ -38,13 +38,13 @@ public class ParametersParserAndValidator  {
 	private static final String OPTION_SHORT_PROPERTIES = "p";
 	private static final String OPTION_LONG_PROPERTIES = "properties";
 	private static final String OPTION_SHORT_XML_CACHE = "x";
-	private static final String OPTION_LONG_XML_CACHE = "xml-cache-directory";
+	private static final String OPTION_LONG_XML_CACHE = "xml-cache-dir";
 	private static final String OPTION_SHORT_OUTPUT_DIRECTORY = "d";
-	private static final String OPTION_LONG_OUTPUT_DIRECTORY = "output-directory";
+	private static final String OPTION_LONG_OUTPUT_DIRECTORY = "output-dir";
 	private static final String OPTION_SHORT_OUTPUT_FILE = "o";
 	private static final String OPTION_LONG_OUTPUT_FILE = "output-file";
 	private static final String OPTION_SHORT_OVERWRITE_OUTPUT = "O";
-	private static final String OPTION_LONG_OVERWRITE_OUTPUT = "overwrite-output-file";
+	private static final String OPTION_LONG_OVERWRITE_OUTPUT = "overwrite-output";
 	private static final String OPTION_SHORT_TAGS = "t";
 	private static final String OPTION_LONG_TAGS = "tags";
 	private static final String OPTION_SHORT_CONSOLE_OUTPUT = "c";
@@ -120,7 +120,7 @@ public class ParametersParserAndValidator  {
 			parametersAreValid = true;
 		} catch (ParseException | IOException e) {
 			errorPreamble = e.getMessage();
-			logger.error(e.getStackTrace());
+			logger.error(e.toString());
 			printHelp();
 		}
 		
@@ -367,14 +367,14 @@ public class ParametersParserAndValidator  {
 			logger.error(errorPreamble);
 		}
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.setWidth(140);
+		formatter.setWidth(80);
 		formatter.printHelp(programName + " RELEASE_ID",
 				"\nAll options are optional. Only RELEASE_ID is required. You should provide one (and only one) release id. "
 						+ "It could be only release id (e.g. b0837172-673c-4416-80d6-8a5801e6f102) or text containing release id "
 						+ "(e.g. url copied from browser: https://musicbrainz.org/release/07da4b32-1a0d-4a9f-ae62-b997321fb946)."
 						+ "\n\nOptions:",
 						allowedOptions,
-						"\nIf you encounter a problem or if you have any questions, feel free and let me know (pwtrela@gmail.com).",
+						"\nIf you have encountered a problem or if you have any questions, feel free and let me know (pwtrela@gmail.com).",
 						true);
 	}
 
@@ -397,7 +397,7 @@ public class ParametersParserAndValidator  {
 		options.addOption(OPTION_SHORT_OVERWRITE_OUTPUT, OPTION_LONG_OVERWRITE_OUTPUT, false, "If output file is available on disk, then it will be overwritten."
 				+ "\nThis option is ignored when -" + OPTION_SHORT_CONSOLE_OUTPUT + " option is in use");
 		options.addOption(OPTION_SHORT_TAGS, OPTION_LONG_TAGS, true, "Template tags for output. Default: " + DEFAULT_TAGS);
-		options.addOption(OPTION_SHORT_CONSOLE_OUTPUT, OPTION_LONG_CONSOLE_OUTPUT, false, "Prints output to console (does't create output file)");
+		options.addOption(OPTION_SHORT_CONSOLE_OUTPUT, OPTION_LONG_CONSOLE_OUTPUT, false, "Prints output to console (doesn't create output file)");
 		options.addOption(OPTION_SHORT_SKIP_CACHE, OPTION_LONG_SKIP_CACHE, false,
 				"Download xml files directly from musicbrainz.org site and doesn't save it in local cache directory."
 				+ "\nThis option is not recommended because it significantly increases the download time and the tag calculation");

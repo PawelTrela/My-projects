@@ -54,6 +54,9 @@ public class XMLProvider {
 				httpStream.close();
 				stream = new FileInputStream(targetPath.toFile());
 			}
+			else {
+				stream = httpStream;
+			}
 		}
 		return stream;
 	}

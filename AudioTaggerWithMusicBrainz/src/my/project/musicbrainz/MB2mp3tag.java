@@ -18,8 +18,10 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.status.StatusLogger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -42,9 +44,11 @@ public class MB2mp3tag {
 	static DocumentBuilder db;
 	static List<String> output4mp3tag;
 
-	private static final Logger logger = LogManager.getLogger();
+	// private static final Logger logger = LogManager.getLogger();
 
 	public static void main(String[] args) {
+		StatusLogger.getLogger().setLevel(Level.OFF);
+		Logger logger = LogManager.getLogger();
 		ParametersParserAndValidator parametersParser = new ParametersParserAndValidator(MB2mp3tag.class.getSimpleName(), args);
 		if (!parametersParser.areParametersValid()) {
 			logger.error("Parameters are not valid.");
@@ -149,7 +153,7 @@ public class MB2mp3tag {
 		} catch (IOException | ParserConfigurationException | SAXException | InterruptedException e) {
 			logger.error(e.toString());
 			Arrays.asList(e.getStackTrace()).forEach(item -> logger.error("        at " + item));
-			System.out.println("Got error: " + e.getMessage());
+			System.out.println("Got error: " + e.getClass().getName() + " (" + e.getMessage() + ")");
 		}
 	}
 
@@ -284,13 +288,13 @@ public class MB2mp3tag {
 						TimeUnit.MILLISECONDS.toMinutes(eta) % TimeUnit.HOURS.toMinutes(1),
 						TimeUnit.MILLISECONDS.toSeconds(eta) % TimeUnit.MINUTES.toSeconds(1));
 
-		StringBuilder string = new StringBuilder(115);
+		StringBuilder string = new StringBuilder(80);
 		int percent = (int) (current * 100 / total);
 		string.append('\r')
 		.append(percent < 10 ? "  " : (percent < 100 ? " " : ""))
 		.append(String.format(" %d%% [", percent))
-		.append(String.join("", Collections.nCopies(percent * 2 / 3, "="))).append('>')
-		.append(String.join("", Collections.nCopies(66 - (percent * 2 / 3), " "))).append(']').append(info)
+		.append(String.join("", Collections.nCopies((int) (percent * 0.35), "="))).append('>')
+		.append(String.join("", Collections.nCopies(35 - (int) (percent * 0.35), " "))).append(']').append(info)
 		.append(String.format(", ETA: %s", etaHms));
 
 		System.out.print(string);
