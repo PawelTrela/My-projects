@@ -14,7 +14,8 @@ public class MusicBrainzConnector {
 	private static final Logger logger = LogManager.getLogger();
 	
 	public static InputStream downloadXML(String type, String id) throws IOException, InterruptedException {
-		TimeUnit.SECONDS.sleep(1);
+		TimeUnit.SECONDS.sleep(1); // musicbrainz.org "dislikes" when it needs to share a lot of data within a short period of time
+								// so here I suspend application for a second.
 	    URL url = new URL(prepareUrl(type, id));
 	    HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
 	    httpConnection.setRequestMethod("GET");
