@@ -44,8 +44,6 @@ public class MB2mp3tag {
 	static DocumentBuilder db;
 	static List<String> output4mp3tag;
 
-	// private static final Logger logger = LogManager.getLogger();
-
 	public static void main(String[] args) {
 		StatusLogger.getLogger().setLevel(Level.OFF);
 		Logger logger = LogManager.getLogger();
