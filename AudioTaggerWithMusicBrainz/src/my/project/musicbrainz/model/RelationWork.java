@@ -36,6 +36,6 @@ public class RelationWork {
 	
 	@Override
 	public String toString() {
-		return "\nRelationWork [type=" + type + ", date=" + date + ", work=" + work + "]";
+		return "RelationWork [type=" + type + ", date=" + date + ", work=" + work + "]";
 	}
 }

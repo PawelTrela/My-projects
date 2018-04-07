@@ -60,7 +60,7 @@ public class Medium {
 	
 	@Override
 	public String toString() {
-		return "\n	Medium [position=" + position + ", format=" + format + ", trackListCount=" + trackListCount
+		return "Medium [position=" + position + ", format=" + format + ", trackListCount=" + trackListCount
 				+ ", trackList=" + trackList + "]";
 	}
 }

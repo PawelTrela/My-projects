@@ -60,7 +60,7 @@ public class Recording {
 	
 	@Override
 	public String toString() {
-		return "\nRecording [id=" + id + ", title=" + title + ",\n\nrelationArtist=" + relationArtist + ", relationWork=" + relationWork
+		return "Recording [id=" + id + ", title=" + title + ",\n\nrelationArtist=" + relationArtist + ", relationWork=" + relationWork
 				+ "]";
 	}
 }

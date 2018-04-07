@@ -1,13 +1,16 @@
 package my.project.musicbrainz.model;
 
+import java.util.List;
+
 public class Track {
 	private String id;
 	private Integer position;
 	private String title;
 	private Integer length;
 	private Recording recording;
+	private List<Artist> artistList;
 	private Medium parent;
-	
+		
 	public String getId() {
 		return id;
 	}
@@ -39,6 +42,12 @@ public class Track {
 		this.recording = recording;
 	}
 	
+	public List<Artist> getArtistList() {
+		return artistList;
+	}
+	public void setArtistList(List<Artist> artistList) {
+		this.artistList = artistList;
+	}
 	public Medium getParent() {
 		return parent;
 	}
@@ -59,7 +68,7 @@ public class Track {
 	
 	@Override
 	public String toString() {
-		return "\n		Track [id=" + id + ", position=" + position + ", title=" + title + ", length=" + length + ", recording="
-				+ recording + "]";
+		return "Track [id=" + id + ", position=" + position + ", title=" + title + ", length=" + length + ", recording="
+				+ recording + ", artistList=" + artistList + ", parent=" + parent + "]";
 	}
 }

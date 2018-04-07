@@ -113,15 +113,18 @@ public class Mp3tagsValuesProvider {
 	}
 
 	public static String getArtist(Track track) {
-		Map<String,String> artists = new LinkedHashMap<>();
-		artists.put("instrument", null);
-		artists.put("harpsichord", null);
-		artists.put("strings", null);
-		artists.put("performer", null);
-		artists.put("vocal", null);
-		artists.put("performing orchestra", null);
-		artists.put("conductor", null);
+		String valueToReturn = "";
+
 		if (track.getRecording().hasRelationArtist()) {
+			Map<String,String> artists = new LinkedHashMap<>();
+			artists.put("instrument", null);
+			artists.put("harpsichord", null);
+			artists.put("strings", null);
+			artists.put("performer", null);
+			artists.put("vocal", null);
+			artists.put("performing orchestra", null);
+			artists.put("conductor", null);
+
 			List<RelationArtist> relations = track.getRecording().getRelationArtist();
 			for (int i = 0; i<relations.size(); i++) {
 				RelationArtist relation = relations.get(i);
@@ -140,16 +143,28 @@ public class Mp3tagsValuesProvider {
 					artists.put(relationType, artistName);
 				}
 			}
-			String valueToReturn = "";
+			
 			for (Map.Entry<String,String> entry : artists.entrySet()) {
 				if (entry.getValue()!=null) {
 					valueToReturn += textSeparator(valueToReturn);
 					valueToReturn += entry.getValue();
 				}
 			}
-			return normalize(valueToReturn);
+			valueToReturn = normalize(valueToReturn);
 		}
-		return "";
+		else {
+			List<Artist> artists = track.getArtistList();
+			if (artists == null) {
+				artists = track.getParent().getParent().getArtistList();
+			}
+			if (artists != null) {
+				for (Artist artist : artists) {
+					valueToReturn += textSeparator(valueToReturn);
+					valueToReturn += artist.getName();
+				}
+			}
+		}
+		return valueToReturn;
 	}
 
 	public static String getRecordingDate(Track track) {
@@ -166,6 +181,9 @@ public class Mp3tagsValuesProvider {
 					break;
 				}
 			}
+		}
+		if (valueToReturn.isEmpty()) {
+			valueToReturn = track.getParent().getParent().getDate();
 		}
 		return valueToReturn;
 	}

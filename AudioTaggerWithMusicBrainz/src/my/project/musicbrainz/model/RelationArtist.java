@@ -51,7 +51,7 @@ public class RelationArtist {
 	
 	@Override
 	public String toString() {
-		return "\nRelationArtist [type=" + type + ", attribute=" + attribute + ", beginDate=" + beginDate + 
+		return "RelationArtist [type=" + type + ", attribute=" + attribute + ", beginDate=" + beginDate + 
 				", endDate=" + endDate + ", artist=" + artist + "]";
 	}
 }

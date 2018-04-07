@@ -70,9 +70,11 @@ public class MB2mp3tag {
 			Release release = new Release();
 			release.setId(elementRelease.getAttribute("id"));
 			release.setTitle(getTextContent(elementRelease, "title"));
+			release.setDate(getTextContent(elementRelease, "date"));
 			release.setLabel(getTextContent(elementRelease, "label-info-list.label-info.label.name"));
 			Element elementMediumList = (Element) elementRelease.getElementsByTagName("medium-list").item(0);
 			release.setMediumListCount(elementMediumList.getAttribute("count"));
+			release.setArtistList(getReleaseArtists(elementRelease));
 
 			List<Medium> mediumList = new ArrayList<>();
 			NodeList nodeListMedium = elementRelease.getElementsByTagName("medium");
@@ -104,7 +106,7 @@ public class MB2mp3tag {
 					track.setTitle(getTextContent(elementTrack, "title"));
 					track.setPosition(Integer.parseInt(getTextContent(elementTrack, "position")));
 					track.setLength(Integer.parseInt(getTextContent(elementTrack, "length")));
-
+					track.setArtistList(getReleaseArtists(getElement((Element) elementTrack, "recording")));
 					String recordingId = ((Element) elementTrack.getElementsByTagName("recording").item(0))
 							.getAttribute("id");
 
@@ -155,6 +157,21 @@ public class MB2mp3tag {
 		}
 	}
 
+	private static List<Artist> getReleaseArtists(Element element) throws SAXException, IOException, InterruptedException {
+		List<Artist> artists = new ArrayList<Artist>();
+		Element artistCreditElement = getElement(element, "artist-credit");
+		NodeList nameCreditElements = artistCreditElement.getElementsByTagName("name-credit");
+		for (int i = 0; i < nameCreditElements.getLength(); i++) {
+			Element artistElement = getElement((Element) nameCreditElements.item(i), "artist");
+			String artistId = artistElement.getAttribute("id");
+			if (!artistId.isEmpty()) {
+				Artist artist = getArtist(artistId);
+				artists.add(artist);
+			}
+		}
+		return artists;
+	}
+	
 	private static RelationWork createRecordingRelationWork(Element elementRelationList) 
 			throws SAXException, IOException, InterruptedException {
 		NodeList relation = elementRelationList.getElementsByTagName("relation");
@@ -241,6 +258,33 @@ public class MB2mp3tag {
 		return artist;
 	}
 
+	private static Element getElement(Element parentElement, String name) {
+		String elementName = "";
+		String remainingPath = "";
+		int dotPosition = name.indexOf(".");
+
+		if (dotPosition > 0) {
+			elementName = name.substring(0, dotPosition);
+			remainingPath = name.substring(dotPosition + 1, name.length());
+		} else {
+			elementName = name;
+		}
+		NodeList children = parentElement.getChildNodes();
+		for (int i = 0; i < children.getLength(); i++) {
+			if (children.item(i) instanceof Element) {
+				Element childElement = (Element) children.item(i);
+				if (childElement.getTagName().equals(elementName)) {
+					if (remainingPath.isEmpty()) {
+						return childElement;
+					} else {
+						return getElement(childElement, remainingPath);
+					}
+				}
+			}
+		}
+		return null;
+	}
+	
 	private static String getTextContent(Element element, String name) {
 		String elementName = "";
 		String remainingPath = "";
@@ -342,7 +386,7 @@ public class MB2mp3tag {
 				tagValue = Mp3tagsValuesProvider.getArtist(track);
 				break;
 			case "%year%":
-				tagValue = Mp3tagsValuesProvider.getComposingDate(track);
+				tagValue = Mp3tagsValuesProvider.getRecordingDate(track);
 				break;
 			case "%organization%":
 				tagValue = Mp3tagsValuesProvider.getOrganization(track);

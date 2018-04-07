@@ -77,7 +77,7 @@ public class Artist {
 	
 	@Override
 	public String toString() {
-		return "\nArtist [id=" + id + ", name=" + name + ", sortName=" + sortName + ", type=" + type + ", country="
+		return "Artist [id=" + id + ", name=" + name + ", sortName=" + sortName + ", type=" + type + ", country="
 				+ country + ", area=" + area + ", lifeSpanBegin=" + lifeSpanBegin + ", lifeSpanEnd=" + lifeSpanEnd
 				+ "]";
 	}

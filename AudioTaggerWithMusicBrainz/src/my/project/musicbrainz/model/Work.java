@@ -37,6 +37,6 @@ public class Work {
 
 	@Override
 	public String toString() {
-		return "\nWork [id=" + id + ", title=" + title + ", relationArtist=" + relationArtist + "]";
+		return "Work [id=" + id + ", title=" + title + ", relationArtist=" + relationArtist + "]";
 	}
 }

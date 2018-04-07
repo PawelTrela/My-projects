@@ -151,6 +151,7 @@ public class ParametersParserAndValidator  {
 		File outputFile = null;
 		if (areParametersValid() && !isConsoleOutput()) {
 			if (outputFileName.isEmpty()) {
+				releaseName = removeInvalidCharacters(releaseName, false);
 				outputFileName = releaseName + ".txt";
 			}
 			outputFile = new File(outputDirectory.getAbsolutePath() + File.separator + outputFileName);
@@ -208,6 +209,7 @@ public class ParametersParserAndValidator  {
 			boolean isDirectoryPresentInProperties = false;
 			if (commandLine.hasOption(OPTION_SHORT_XML_CACHE)) {
 				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_XML_CACHE);
+				propertyValue = removeInvalidCharacters(propertyValue, true);
 				Path path = Paths.get(propertyValue).normalize();
 				cacheDirectory = path.toFile();
 				if (!cacheDirectory.exists()) {
@@ -223,7 +225,9 @@ public class ParametersParserAndValidator  {
 				isDirectoryPresentInProperties = true;
 			}
 			else {
-				Path path = Paths.get(properties.getProperty(OPTION_LONG_XML_CACHE)).normalize();
+				String propertyValue = properties.getProperty(OPTION_LONG_XML_CACHE);
+				propertyValue = removeInvalidCharacters(propertyValue, true);
+				Path path = Paths.get(propertyValue).normalize();
 				cacheDirectory = path.toFile();
 				if (cacheDirectory.exists()) {
 					if (cacheDirectory.isFile()) {
@@ -256,6 +260,7 @@ public class ParametersParserAndValidator  {
 		if (!properties.getProperty(OPTION_LONG_CONSOLE_OUTPUT).equals("1") ) {
 			if (commandLine.hasOption(OPTION_SHORT_OUTPUT_DIRECTORY)) {
 				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_OUTPUT_DIRECTORY);
+				propertyValue = removeInvalidCharacters(propertyValue, true);
 				Path path = Paths.get(propertyValue).normalize();
 				outputDirectory = path.toFile();
 				if (!outputDirectory.exists()) {
@@ -270,7 +275,9 @@ public class ParametersParserAndValidator  {
 				}
 			}
 			else {
-				Path path = Paths.get(properties.getProperty(OPTION_LONG_OUTPUT_DIRECTORY)).normalize();
+				String propertyValue = properties.getProperty(OPTION_LONG_OUTPUT_DIRECTORY);
+				propertyValue = removeInvalidCharacters(propertyValue, true);
+				Path path = Paths.get(propertyValue).normalize();
 				outputDirectory = path.toFile();
 				if (outputDirectory.exists()) {
 					if (outputDirectory.isFile()) {
@@ -288,12 +295,14 @@ public class ParametersParserAndValidator  {
 			Path path = null;
 			if (commandLine.hasOption(OPTION_SHORT_OUTPUT_FILE)) {
 				String propertyValue = commandLine.getOptionValue(OPTION_SHORT_OUTPUT_FILE);
+				propertyValue = removeInvalidCharacters(propertyValue, false);
 				path = Paths.get(propertyValue).normalize();
 				outputFileName = path.toString();
 			}
 			else {
 				String propertyValue = properties.getProperty(OPTION_LONG_OUTPUT_FILE);
 				if (!propertyValue.isEmpty()) {
+					propertyValue = removeInvalidCharacters(propertyValue, false);
 					path = Paths.get(propertyValue).normalize();
 					outputFileName = path.toString();
 				}
@@ -308,6 +317,14 @@ public class ParametersParserAndValidator  {
 		return true;
 	}
 
+	private String removeInvalidCharacters(String path, boolean isDirectory) {
+		String charsToRemove = "*?\"<>|";
+		if (!isDirectory) {
+			charsToRemove += ":\\/";
+		}
+		return path.replaceAll("[" + charsToRemove + "]", "_");
+	}
+	
 	private void putOptionsToProperties(CommandLine commandLine) {
 		if (commandLine.hasOption(OPTION_SHORT_SKIP_CACHE)) {
 			properties.setProperty(OPTION_LONG_SKIP_CACHE, "1");
