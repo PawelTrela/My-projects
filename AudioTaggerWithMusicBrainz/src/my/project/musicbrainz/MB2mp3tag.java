@@ -325,6 +325,7 @@ public class MB2mp3tag {
 			case "%album%":
 				tagValue = Mp3tagsValuesProvider.getAlbumName(track);
 				break;
+			case "%track%":
 			case "%tracknumber%":
 				tagValue = Mp3tagsValuesProvider.getTrackNumber(track);
 				break;
