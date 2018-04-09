@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import my.project.musicbrainz.model.Artist;
 import my.project.musicbrainz.model.Medium;
+import my.project.musicbrainz.model.Recording;
 import my.project.musicbrainz.model.RelationArtist;
 import my.project.musicbrainz.model.Release;
 import my.project.musicbrainz.model.Track;
@@ -84,7 +85,7 @@ public class Mp3tagsValuesProvider {
 
 	public static String getComposer(Track track, boolean includeDetails) {
 		String valueToReturn = "";
-		if (track.getRecording().hasRelationWork()) {
+		if (hasRelationWork(track.getRecording())) {
 			List<RelationArtist> relations = track.getRecording().getRelationWork().getWork().getRelationArtist();
 			for (int i = 0; i < relations.size(); i++) {
 				RelationArtist relation = relations.get(i);
@@ -115,7 +116,7 @@ public class Mp3tagsValuesProvider {
 	public static String getArtist(Track track) {
 		String valueToReturn = "";
 
-		if (track.getRecording().hasRelationArtist()) {
+		if (hasRelationArtist(track.getRecording())) {
 			Map<String,String> artists = new LinkedHashMap<>();
 			artists.put("instrument", null);
 			artists.put("harpsichord", null);
@@ -169,7 +170,7 @@ public class Mp3tagsValuesProvider {
 
 	public static String getRecordingDate(Track track) {
 		String valueToReturn = "";
-		if (track.getRecording().hasRelationArtist()) {
+		if (hasRelationArtist(track.getRecording())) {
 			List<RelationArtist> relations = track.getRecording().getRelationArtist();
 			for (int i = 0; i < relations.size(); i++) {
 				RelationArtist relation = relations.get(i);
@@ -190,7 +191,7 @@ public class Mp3tagsValuesProvider {
 	
 	public static String getComposingDate(Track track) {
 		String valueToReturn = "";
-		if (track.getRecording().hasRelationWork()) {
+		if (hasRelationWork(track.getRecording())) {
 			List<RelationArtist> relations = track.getRecording().getRelationWork().getWork().getRelationArtist();
 			for (int i = 0; i < relations.size(); i++) {
 				RelationArtist relation = relations.get(i);
@@ -232,6 +233,20 @@ public class Mp3tagsValuesProvider {
 		return "https://musicbrainz.org/track/" + track.getId();
 	}
 
+	private static boolean hasRelationWork(Recording recording) {
+		if (recording.getRelationWork() != null) {
+			return true;
+		}
+		return false;
+	}
+	
+	private static boolean hasRelationArtist(Recording recording) {
+		if (recording.getRelationArtist() != null) {
+			return true;
+		}
+		return false;
+	}
+	
 	private static String textSeparator(String pastText) {
 		if (!pastText.isEmpty()) {
 			return ", ";

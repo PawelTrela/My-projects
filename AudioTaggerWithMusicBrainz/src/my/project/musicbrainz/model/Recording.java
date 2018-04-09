@@ -44,20 +44,6 @@ public class Recording {
 		this.relationWork = relationWork;
 	}
 	
-	public boolean hasRelationWork() {
-		if (relationWork != null) {
-			return true;
-		}
-		return false;
-	}
-	
-	public boolean hasRelationArtist() {
-		if (relationArtist != null) {
-			return true;
-		}
-		return false;
-	}
-	
 	@Override
 	public String toString() {
 		return "Recording [id=" + id + ", title=" + title + ",\n\nrelationArtist=" + relationArtist + ", relationWork=" + relationWork
